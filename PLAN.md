@@ -283,7 +283,7 @@ the monorepo for now.
 > (currently: publish from the monorepo).
 >
 > **Repo home decided (2026-08-04): extracted.** Canonical home is
-> **github.com/colight-dev/twilightcss** (full history via git-filter-repo, own CI running
+> **github.com/mhuebert/twilightcss** (full history via git-filter-repo, own CI running
 > the ratchets + 20k sweep + size + dist build). npm name: bare **`twilightcss`**. The
 > monorepo copy remains the workspace dependency only until the first npm release, after
 > which colight switches to the published package and the monorepo copy is deleted —

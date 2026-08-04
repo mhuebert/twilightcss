@@ -18,7 +18,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/colight-dev/twilightcss.git"
+    "url": "git+https://github.com/mhuebert/twilightcss.git"
   },
   "author": "Matthew Huebert <mhuebert@gmail.com>",
   "files": [
@@ -66,7 +66,7 @@
     "typescript": "^5.9.3",
     "vitest": "^3.2.6"
   },
-  "homepage": "https://github.com/colight-dev/twilightcss#readme",
-  "bugs": "https://github.com/colight-dev/twilightcss/issues",
+  "homepage": "https://github.com/mhuebert/twilightcss#readme",
+  "bugs": "https://github.com/mhuebert/twilightcss/issues",
   "packageManager": "pnpm@10.34.5"
 }
