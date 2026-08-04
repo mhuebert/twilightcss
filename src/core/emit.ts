@@ -36,8 +36,11 @@ export function emit(nodes: Node[], { important = false } = {}): string {
   return out;
 }
 
+const NO_ESCAPE = /^[a-zA-Z_][a-zA-Z0-9_-]*$/;
+
 /** Escape a candidate token into its CSS class-selector form (v4 style). */
 export function escapeClassName(name: string): string {
+  if (NO_ESCAPE.test(name)) return name;
   let out = "";
   for (let i = 0; i < name.length; i++) {
     const ch = name[i]!;

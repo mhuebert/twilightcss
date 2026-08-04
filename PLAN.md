@@ -222,6 +222,22 @@ reporting wired.
 gradients), remaining variants, arbitrary everything. Raise the tier-2 ratchet each PR. Land
 append-only injection only if the bench says it matters.
 
+> **M3 results (2026-08-04):** tier-1 100%, tier-2 sampled 100% (ratchet 1.0), **full 20k
+> generated sweep 20000/20000**. Engine 72.7 KB min / 18.3 KB gz; engine+assets 99.5 KB min /
+> 26.1 KB gz; cold 500-token compile ~1.5 ms (~3 µs/token), warm token ~0. Notable v4
+> semantics captured along the way: before:/after: put trailing variants in _nested_ `&`-rules
+> with media wrappers inside; `--tw-content`'s @property emits initial-value before inherits;
+> `/100` opacity short-circuits; shadow-family opacity modifiers fold
+> `oklab(from <color> l a b / N%)` fallbacks; rule-nested at-rules flatten to sibling rules
+> under a media wrapper; `marker:` fans out ×4.
+>
+> **M3.5 (open): size architecture.** The 40 KB-min engine target needs the functional-utility
+> table expressed as packed declarative specs interpreted by generic executors — packing the
+> _statics_ table netted only ~2 KB because handler code, not data, dominates. Deferred until
+> after the colight migration decision; budgets in size-budget.json are regression ceilings at
+> current measured values. gz (the network number) is already ~7× smaller than the UnoCSS
+> stack.
+
 **M4 — Publish prep.** Publish as `@colight/twilight` (bare `twilight` and `tw4` are taken on
 npm; the scoped name also keeps the colight org visible in the credit). README with the
 conformance pass-rate and size badge as the headline, examples: vanilla `<script>`, React, and an "style LLM output with no build step"

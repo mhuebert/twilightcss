@@ -4,6 +4,8 @@
 // bracket-aware throughout. This module only tokenizes — validity of roots,
 // values, and variants is decided by the tables that consume the parts.
 
+const EMPTY: string[] = [];
+
 export interface Candidate {
   /** variant names, left to right, as written (e.g. ["md", "hover"]) */
   variants: string[];
@@ -39,8 +41,21 @@ export function splitTop(s: string, sep: string): string[] | null {
   return parts;
 }
 
+const SIMPLE = /^[a-zA-Z][\w.-]*$/;
+
 export function parseCandidate(raw: string): Candidate | null {
   if (!raw) return null;
+  // fast path: plain utilities without variants/brackets/modifiers
+  if (SIMPLE.test(raw)) {
+    return {
+      variants: EMPTY,
+      important: false,
+      negative: false,
+      base: raw,
+      raw,
+      modifier: null,
+    };
+  }
   const segments = splitTop(raw, ":");
   if (segments === null) return null;
   if (segments.some((s) => s === "")) return null;

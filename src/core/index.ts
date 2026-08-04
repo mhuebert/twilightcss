@@ -144,13 +144,28 @@ export function compileOne(
   }
 
   let css = emit(rules, { important: cand.important });
-  const seenProps = new Set<string>();
-  for (const p of [...extraProps, ...(utility.properties ?? [])]) {
-    if (seenProps.has(p.name)) continue;
-    seenProps.add(p.name);
-    css += emitProperty(p);
+  if (extraProps.length === 0 && utility.properties) {
+    // hot path: property groups are shared arrays — cache their serialization
+    css += propsText(utility.properties);
+  } else if (extraProps.length || utility.properties) {
+    const seenProps = new Set<string>();
+    for (const p of [...extraProps, ...(utility.properties ?? [])]) {
+      if (seenProps.has(p.name)) continue;
+      seenProps.add(p.name);
+      css += emitProperty(p);
+    }
   }
   return css;
+}
+
+const propsTextCache = new WeakMap<PropDef[], string>();
+function propsText(props: PropDef[]): string {
+  let text = propsTextCache.get(props);
+  if (text === undefined) {
+    text = props.map(emitProperty).join("");
+    propsTextCache.set(props, text);
+  }
+  return text;
 }
 
 function emitProperty(p: PropDef): string {
@@ -171,10 +186,14 @@ export function compile(
 ): CompileResult {
   const matched = new Map<string, string>();
   const unmatched: string[] = [];
+  let css = "";
   for (const token of tokens) {
-    const css = compileOne(token, theme);
-    if (css == null) unmatched.push(token);
-    else matched.set(token, css);
+    const one = compileOne(token, theme);
+    if (one == null) unmatched.push(token);
+    else {
+      matched.set(token, one);
+      css += one;
+    }
   }
-  return { css: [...matched.values()].join(""), matched, unmatched };
+  return { css, matched, unmatched };
 }
