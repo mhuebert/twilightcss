@@ -1,0 +1,5 @@
+{
+  "comment": "Bytes, only go down. Initial values are the PLAN targets (<=40KB min engine, ~20KB static CSS), not measurements — the engine must fit inside them from day one.",
+  "engine": { "min": 40960, "gz": 16384 },
+  "engine+assets": { "min": 61440, "gz": 24576 }
+}

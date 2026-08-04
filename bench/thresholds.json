@@ -1,0 +1,5 @@
+{
+  "comment": "Milliseconds, regression ceilings from the PLAN perf targets: sub-ms cold flush for a 500-token document.",
+  "cold500ms": 1.0,
+  "warmNewTokenMs": 0.02
+}
