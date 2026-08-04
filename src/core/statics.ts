@@ -1,481 +1,131 @@
-// Static utility table, packed one-per-line: name=prop:value;prop:value
-// Verified against the real compiler by the conformance harness - edit freely,
+// Static utility table — utilities whose CSS is a fixed set of declarations.
+//
+// Packed as one line per CSS property, because the table is overwhelmingly
+// "one property, many keyword values", and spelling the property name out once
+// per utility cost more than all the values put together:
+//
+//   property|prefix|entry;entry;entry…
+//
+// Each entry names one utility. Its class name is prefix+entry, and its value
+// is the entry itself — so under `overflow|overflow-|`, the entry `auto` means
+// `overflow-auto` → `overflow: auto`. Where the value differs from the name,
+// write it after an `=`: `hidden=none` under `display||` means the utility
+// `hidden` emits `display: none`.
+//
+// Utilities that emit more than one declaration do not fit the grouping, and
+// are listed after the groups in a plain one-per-line form:
+//
+//   name=prop:value;prop:value
+//
+// Verified against the real compiler by the conformance harness — edit freely,
 // the oracle decides correctness.
-export const STATICS = `block=display:block
-inline-block=display:inline-block
-inline=display:inline
-flex=display:flex
-inline-flex=display:inline-flex
-grid=display:grid
-inline-grid=display:inline-grid
-contents=display:contents
-table=display:table
-table-row=display:table-row
-table-cell=display:table-cell
-flow-root=display:flow-root
-list-item=display:list-item
-hidden=display:none
-static=position:static
-fixed=position:fixed
-absolute=position:absolute
-relative=position:relative
-sticky=position:sticky
-visible=visibility:visible
-invisible=visibility:hidden
-collapse=visibility:collapse
-isolate=isolation:isolate
-isolation-auto=isolation:auto
-flex-row=flex-direction:row
-flex-row-reverse=flex-direction:row-reverse
-flex-col=flex-direction:column
-flex-col-reverse=flex-direction:column-reverse
-flex-wrap=flex-wrap:wrap
-flex-wrap-reverse=flex-wrap:wrap-reverse
-flex-nowrap=flex-wrap:nowrap
-flex-auto=flex:auto
-flex-initial=flex:0 auto
-flex-none=flex:none
-grow=flex-grow:1
-grow-0=flex-grow:0
-shrink=flex-shrink:1
-shrink-0=flex-shrink:0
-flex-grow=flex-grow:1
-flex-grow-0=flex-grow:0
-flex-shrink=flex-shrink:1
-flex-shrink-0=flex-shrink:0
-items-start=align-items:flex-start
-items-end=align-items:flex-end
-items-center=align-items:center
-items-baseline=align-items:baseline
-items-stretch=align-items:stretch
-justify-start=justify-content:flex-start
-justify-end=justify-content:flex-end
-justify-center=justify-content:center
-justify-between=justify-content:space-between
-justify-around=justify-content:space-around
-justify-evenly=justify-content:space-evenly
-justify-stretch=justify-content:stretch
-justify-items-start=justify-items:start
-justify-items-end=justify-items:end
-justify-items-center=justify-items:center
-justify-items-stretch=justify-items:stretch
-self-auto=align-self:auto
-self-start=align-self:flex-start
-self-end=align-self:flex-end
-self-center=align-self:center
-self-stretch=align-self:stretch
-self-baseline=align-self:baseline
-content-start=align-content:flex-start
-content-end=align-content:flex-end
-content-center=align-content:center
-content-between=align-content:space-between
-content-around=align-content:space-around
-content-evenly=align-content:space-evenly
-place-items-center=place-items:center
-place-content-center=place-content:center
-overflow-auto=overflow:auto
-overflow-hidden=overflow:hidden
-overflow-clip=overflow:clip
-overflow-visible=overflow:visible
-overflow-scroll=overflow:scroll
-overflow-x-auto=overflow-x:auto
-overflow-y-auto=overflow-y:auto
-overflow-x-hidden=overflow-x:hidden
-overflow-y-hidden=overflow-y:hidden
-overflow-x-clip=overflow-x:clip
-overflow-y-clip=overflow-y:clip
-overflow-x-visible=overflow-x:visible
-overflow-y-visible=overflow-y:visible
-overflow-x-scroll=overflow-x:scroll
-overflow-y-scroll=overflow-y:scroll
-text-left=text-align:left
-text-center=text-align:center
-text-right=text-align:right
-text-justify=text-align:justify
-text-start=text-align:start
-text-end=text-align:end
-uppercase=text-transform:uppercase
-lowercase=text-transform:lowercase
-capitalize=text-transform:capitalize
-normal-case=text-transform:none
-italic=font-style:italic
-not-italic=font-style:normal
-underline=text-decoration-line:underline
-overline=text-decoration-line:overline
-line-through=text-decoration-line:line-through
-no-underline=text-decoration-line:none
-decoration-solid=text-decoration-style:solid
-decoration-double=text-decoration-style:double
-decoration-dotted=text-decoration-style:dotted
-decoration-dashed=text-decoration-style:dashed
-decoration-wavy=text-decoration-style:wavy
-whitespace-normal=white-space:normal
-whitespace-nowrap=white-space:nowrap
-whitespace-pre=white-space:pre
-whitespace-pre-line=white-space:pre-line
-whitespace-pre-wrap=white-space:pre-wrap
-whitespace-break-spaces=white-space:break-spaces
-text-wrap=text-wrap:wrap
-text-nowrap=text-wrap:nowrap
-text-balance=text-wrap:balance
-text-pretty=text-wrap:pretty
+export const STATICS = `display||block;inline-block;inline;flex;inline-flex;grid;inline-grid;contents;table;table-row;table-cell;flow-root;list-item;hidden=none;table-caption;table-column;table-column-group;table-footer-group;table-header-group;table-row-group;inline-table
+position||static;fixed;absolute;relative;sticky
+visibility||visible;invisible=hidden;collapse
+isolation||isolate;isolation-auto=auto
+flex-direction|flex-|row;row-reverse;col=column;col-reverse=column-reverse
+flex-wrap|flex-|wrap;wrap-reverse;nowrap
+flex|flex-|auto;initial=0 auto;none
+flex-grow||grow=1;grow-0=0;flex-grow=1;flex-grow-0=0
+flex-shrink||shrink=1;shrink-0=0;flex-shrink=1;flex-shrink-0=0
+align-items|items-|start=flex-start;end=flex-end;center;baseline;stretch;center-safe=safe center;end-safe=safe flex-end;baseline-last=last baseline
+justify-content|justify-|start=flex-start;end=flex-end;center;between=space-between;around=space-around;evenly=space-evenly;stretch;baseline;normal;center-safe=safe center;end-safe=safe flex-end
+justify-items|justify-items-|start;end;center;stretch;center-safe=safe center;end-safe=safe end
+align-self|self-|auto;start=flex-start;end=flex-end;center;stretch;baseline;center-safe=safe center;end-safe=safe flex-end;baseline-last=last baseline
+align-content|content-|start=flex-start;end=flex-end;center;between=space-between;around=space-around;evenly=space-evenly;normal;baseline;stretch;center-safe=safe center;end-safe=safe flex-end
+place-items|place-items-|center;start;end;baseline;stretch;center-safe=safe center;end-safe=safe end
+place-content|place-content-|center;start;end;between=space-between;around=space-around;evenly=space-evenly;baseline;stretch;center-safe=safe center;end-safe=safe end
+overflow|overflow-|auto;hidden;clip;visible;scroll
+overflow-x|overflow-x-|auto;hidden;clip;visible;scroll
+overflow-y|overflow-y-|auto;hidden;clip;visible;scroll
+text-align|text-|left;center;right;justify;start;end
+text-transform||uppercase;lowercase;capitalize;normal-case=none
+font-style||italic;not-italic=normal
+text-decoration-line||underline;overline;line-through;no-underline=none
+text-decoration-style|decoration-|solid;double;dotted;dashed;wavy
+white-space|whitespace-|normal;nowrap;pre;pre-line;pre-wrap;break-spaces
+text-wrap|text-|wrap;nowrap;balance;pretty
+overflow-wrap||break-words=break-word;wrap-normal=normal;wrap-break-word=break-word;wrap-anywhere=anywhere
+word-break|break-|all=break-all;keep=keep-all
+text-overflow|text-|ellipsis;clip
+vertical-align|align-|baseline;top;middle;bottom;text-top;text-bottom
+list-style-type|list-|none;disc;decimal
+list-style-position|list-|inside;outside
+pointer-events|pointer-events-|none;auto
+resize||resize-none=none;resize=both;resize-y=vertical;resize-x=horizontal
+box-sizing|box-|border=border-box;content=content-box
+border-collapse|border-|collapse;separate
+table-layout|table-|auto;fixed
+--tw-mask-radial-position|mask-radial-at-|top;top-left=top left;top-right=top right;bottom;bottom-left=bottom left;bottom-right=bottom right;left;right;center
+scrollbar-width|scrollbar-|thin;auto;none
+scrollbar-gutter|scrollbar-gutter-|auto;stable;both-edges=stable both-edges
+float|float-|left;right;start=inline-start;end=inline-end;none
+clear|clear-|left;right;both;start=inline-start;end=inline-end;none
+object-fit|object-|contain;cover;fill;none;scale-down
+object-position|object-|center;top;bottom;left;right;top-left=left top;top-right=right top;bottom-left=left bottom;bottom-right=right bottom
+will-change|will-change-|auto;scroll=scroll-position;contents;transform
+appearance|appearance-|none;auto
+field-sizing|field-sizing-|content;fixed
+background-clip|bg-clip-|border=border-box;padding=padding-box;content=content-box;text
+background-origin|bg-origin-|border=border-box;padding=padding-box;content=content-box
+background-repeat|bg-|repeat;no-repeat;repeat-x;repeat-y;repeat-round=round;repeat-space=space
+background-attachment|bg-|fixed;local;scroll
+background-size|bg-|auto;cover;contain
+background-position|bg-|center;top;bottom;left;right;top-left=left top;top-right=right top;bottom-left=left bottom;bottom-right=right bottom
+background-image|bg-|none
+mask-clip|mask-|clip-border=border-box;clip-padding=padding-box;clip-content=content-box;clip-fill=fill-box;clip-stroke=stroke-box;clip-view=view-box;no-clip
+mask-origin|mask-origin-|border=border-box;padding=padding-box;content=content-box;fill=fill-box;stroke=stroke-box;view=view-box
+mask-repeat|mask-|repeat;no-repeat;repeat-x;repeat-y;repeat-round=round;repeat-space=space
+mask-size|mask-|auto;cover;contain
+mask-position|mask-|center;top;bottom;left;right;top-left=left top;top-right=right top;bottom-left=left bottom;bottom-right=right bottom
+mask-mode|mask-|alpha;luminance;match=match-source
+mask-composite|mask-|add;subtract;intersect;exclude
+mask-type|mask-type-|alpha;luminance
+break-before|break-before-|auto;avoid;all;avoid-page;page;left;right;column
+break-after|break-after-|auto;avoid;all;avoid-page;page;left;right;column
+break-inside|break-inside-|auto;avoid;avoid-page;avoid-column
+mix-blend-mode|mix-blend-|normal;multiply;screen;overlay;darken;lighten;color-dodge;color-burn;hard-light;soft-light;difference;exclusion;hue;saturation;color;luminosity;plus-darker;plus-lighter
+background-blend-mode|bg-blend-|normal;multiply;screen;overlay;darken;lighten;color-dodge;color-burn;hard-light;soft-light;difference;exclusion;hue;saturation;color;luminosity;plus-darker;plus-lighter
+scroll-behavior|scroll-|smooth;auto
+scroll-snap-align|snap-|start;end;center;align-none=none
+scroll-snap-stop|snap-|normal;always
+backface-visibility|backface-|visible;hidden
+perspective-origin|perspective-origin-|center;top;top-right=100% 0;right;bottom-right=100% 100%;bottom;bottom-left=0 100%;left;top-left=0 0
+justify-self|justify-self-|auto;start;end;center;stretch;center-safe=safe center;end-safe=safe flex-end
+place-self|place-self-|auto;start;end;center;stretch;center-safe=safe center;end-safe=safe end
+grid-auto-flow|grid-flow-|row;col=column;dense;row-dense=row dense;col-dense=column dense
+grid-auto-columns|auto-cols-|auto;min=min-content;max=max-content;fr=minmax(0, 1fr)
+grid-auto-rows|auto-rows-|auto;min=min-content;max=max-content;fr=minmax(0, 1fr)
+grid-row|row-|auto
+grid-column|col-|auto
+transform-origin|origin-|center;top;top-right=100% 0;right;bottom-right=100% 100%;bottom;bottom-left=0 100%;left;top-left=0 0
+transform-style|transform-|3d=preserve-3d;flat
+transform-box|transform-|content=content-box;border=border-box;fill=fill-box;stroke=stroke-box;view=view-box
+forced-color-adjust|forced-color-adjust-|auto;none
+container-type||@container=inline-size;@container-normal=normal
+color-scheme|scheme-|normal;light;dark;light-dark=light dark;only-light=only light;only-dark=only dark
+font-stretch|font-stretch-|ultra-condensed;extra-condensed;condensed;semi-condensed;normal;semi-expanded;expanded;extra-expanded;ultra-expanded
+overscroll-behavior|overscroll-|auto;contain;none
+overscroll-behavior-x|overscroll-x-|auto;contain;none
+overscroll-behavior-y|overscroll-y-|auto;contain;none
+--tw-mask-radial-shape|mask-|circle;ellipse
+--tw-mask-radial-size|mask-radial-|closest-side;closest-corner;farthest-side;farthest-corner
 break-normal=overflow-wrap:normal;word-break:normal
-break-words=overflow-wrap:break-word
-break-all=word-break:break-all
-break-keep=word-break:keep-all
 truncate=overflow:hidden;text-overflow:ellipsis;white-space:nowrap
-text-ellipsis=text-overflow:ellipsis
-text-clip=text-overflow:clip
-align-baseline=vertical-align:baseline
-align-top=vertical-align:top
-align-middle=vertical-align:middle
-align-bottom=vertical-align:bottom
-align-text-top=vertical-align:text-top
-align-text-bottom=vertical-align:text-bottom
-list-none=list-style-type:none
-list-disc=list-style-type:disc
-list-decimal=list-style-type:decimal
-list-inside=list-style-position:inside
-list-outside=list-style-position:outside
 antialiased=-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale
 subpixel-antialiased=-webkit-font-smoothing:auto;-moz-osx-font-smoothing:auto
-pointer-events-none=pointer-events:none
-pointer-events-auto=pointer-events:auto
 select-none=-webkit-user-select:none;user-select:none
 select-text=-webkit-user-select:text;user-select:text
 select-all=-webkit-user-select:all;user-select:all
 select-auto=-webkit-user-select:auto;user-select:auto
-resize-none=resize:none
-resize=resize:both
-resize-y=resize:vertical
-resize-x=resize:horizontal
 sr-only=position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border-width:0
 not-sr-only=position:static;width:auto;height:auto;padding:0;margin:0;overflow:visible;clip-path:none;white-space:normal
-box-border=box-sizing:border-box
-box-content=box-sizing:content-box
-border-collapse=border-collapse:collapse
-border-separate=border-collapse:separate
-table-auto=table-layout:auto
-table-fixed=table-layout:fixed
-mask-radial-at-top=--tw-mask-radial-position:top
-mask-radial-at-top-left=--tw-mask-radial-position:top left
-mask-radial-at-top-right=--tw-mask-radial-position:top right
-mask-radial-at-bottom=--tw-mask-radial-position:bottom
-mask-radial-at-bottom-left=--tw-mask-radial-position:bottom left
-mask-radial-at-bottom-right=--tw-mask-radial-position:bottom right
-mask-radial-at-left=--tw-mask-radial-position:left
-mask-radial-at-right=--tw-mask-radial-position:right
-mask-radial-at-center=--tw-mask-radial-position:center
-scrollbar-thin=scrollbar-width:thin
-scrollbar-auto=scrollbar-width:auto
-scrollbar-none=scrollbar-width:none
-scrollbar-gutter-auto=scrollbar-gutter:auto
-scrollbar-gutter-stable=scrollbar-gutter:stable
-scrollbar-gutter-both-edges=scrollbar-gutter:stable both-edges
 outline-solid=--tw-outline-style:solid;outline-style:solid
 outline-dashed=--tw-outline-style:dashed;outline-style:dashed
 outline-dotted=--tw-outline-style:dotted;outline-style:dotted
 outline-double=--tw-outline-style:double;outline-style:double
-wrap-normal=overflow-wrap:normal
-wrap-break-word=overflow-wrap:break-word
-wrap-anywhere=overflow-wrap:anywhere
-float-left=float:left
-float-right=float:right
-float-start=float:inline-start
-float-end=float:inline-end
-float-none=float:none
-clear-left=clear:left
-clear-right=clear:right
-clear-both=clear:both
-clear-start=clear:inline-start
-clear-end=clear:inline-end
-clear-none=clear:none
-object-contain=object-fit:contain
-object-cover=object-fit:cover
-object-fill=object-fit:fill
-object-none=object-fit:none
-object-scale-down=object-fit:scale-down
-object-center=object-position:center
-object-top=object-position:top
-object-bottom=object-position:bottom
-object-left=object-position:left
-object-right=object-position:right
-object-top-left=object-position:left top
-object-top-right=object-position:right top
-object-bottom-left=object-position:left bottom
-object-bottom-right=object-position:right bottom
-will-change-auto=will-change:auto
-will-change-scroll=will-change:scroll-position
-will-change-contents=will-change:contents
-will-change-transform=will-change:transform
-appearance-none=appearance:none
-appearance-auto=appearance:auto
-field-sizing-content=field-sizing:content
-field-sizing-fixed=field-sizing:fixed
-bg-clip-border=background-clip:border-box
-bg-clip-padding=background-clip:padding-box
-bg-clip-content=background-clip:content-box
-bg-clip-text=background-clip:text
-bg-origin-border=background-origin:border-box
-bg-origin-padding=background-origin:padding-box
-bg-origin-content=background-origin:content-box
-bg-repeat=background-repeat:repeat
-bg-no-repeat=background-repeat:no-repeat
-bg-repeat-x=background-repeat:repeat-x
-bg-repeat-y=background-repeat:repeat-y
-bg-repeat-round=background-repeat:round
-bg-repeat-space=background-repeat:space
-bg-fixed=background-attachment:fixed
-bg-local=background-attachment:local
-bg-scroll=background-attachment:scroll
-bg-auto=background-size:auto
-bg-cover=background-size:cover
-bg-contain=background-size:contain
-bg-center=background-position:center
-bg-top=background-position:top
-bg-bottom=background-position:bottom
-bg-left=background-position:left
-bg-right=background-position:right
-bg-top-left=background-position:left top
-bg-top-right=background-position:right top
-bg-bottom-left=background-position:left bottom
-bg-bottom-right=background-position:right bottom
-bg-none=background-image:none
-mask-clip-border=mask-clip:border-box
-mask-clip-padding=mask-clip:padding-box
-mask-clip-content=mask-clip:content-box
-mask-clip-fill=mask-clip:fill-box
-mask-clip-stroke=mask-clip:stroke-box
-mask-clip-view=mask-clip:view-box
-mask-no-clip=mask-clip:no-clip
-mask-origin-border=mask-origin:border-box
-mask-origin-padding=mask-origin:padding-box
-mask-origin-content=mask-origin:content-box
-mask-origin-fill=mask-origin:fill-box
-mask-origin-stroke=mask-origin:stroke-box
-mask-origin-view=mask-origin:view-box
-mask-repeat=mask-repeat:repeat
-mask-no-repeat=mask-repeat:no-repeat
-mask-repeat-x=mask-repeat:repeat-x
-mask-repeat-y=mask-repeat:repeat-y
-mask-repeat-round=mask-repeat:round
-mask-repeat-space=mask-repeat:space
-mask-auto=mask-size:auto
-mask-cover=mask-size:cover
-mask-contain=mask-size:contain
-mask-center=mask-position:center
-mask-top=mask-position:top
-mask-bottom=mask-position:bottom
-mask-left=mask-position:left
-mask-right=mask-position:right
-mask-alpha=mask-mode:alpha
-mask-luminance=mask-mode:luminance
-mask-match=mask-mode:match-source
-mask-add=mask-composite:add
-mask-subtract=mask-composite:subtract
-mask-intersect=mask-composite:intersect
-mask-exclude=mask-composite:exclude
-mask-type-alpha=mask-type:alpha
-mask-type-luminance=mask-type:luminance
-break-before-auto=break-before:auto
-break-before-avoid=break-before:avoid
-break-before-all=break-before:all
-break-before-avoid-page=break-before:avoid-page
-break-before-page=break-before:page
-break-before-left=break-before:left
-break-before-right=break-before:right
-break-before-column=break-before:column
-break-after-auto=break-after:auto
-break-after-avoid=break-after:avoid
-break-after-all=break-after:all
-break-after-avoid-page=break-after:avoid-page
-break-after-page=break-after:page
-break-after-left=break-after:left
-break-after-right=break-after:right
-break-after-column=break-after:column
-break-inside-auto=break-inside:auto
-break-inside-avoid=break-inside:avoid
-break-inside-avoid-page=break-inside:avoid-page
-break-inside-avoid-column=break-inside:avoid-column
 box-decoration-clone=-webkit-box-decoration-break:clone;box-decoration-break:clone
 box-decoration-slice=-webkit-box-decoration-break:slice;box-decoration-break:slice
-mix-blend-normal=mix-blend-mode:normal
-bg-blend-normal=background-blend-mode:normal
-mix-blend-multiply=mix-blend-mode:multiply
-bg-blend-multiply=background-blend-mode:multiply
-mix-blend-screen=mix-blend-mode:screen
-bg-blend-screen=background-blend-mode:screen
-mix-blend-overlay=mix-blend-mode:overlay
-bg-blend-overlay=background-blend-mode:overlay
-mix-blend-darken=mix-blend-mode:darken
-bg-blend-darken=background-blend-mode:darken
-mix-blend-lighten=mix-blend-mode:lighten
-bg-blend-lighten=background-blend-mode:lighten
-mix-blend-color-dodge=mix-blend-mode:color-dodge
-bg-blend-color-dodge=background-blend-mode:color-dodge
-mix-blend-color-burn=mix-blend-mode:color-burn
-bg-blend-color-burn=background-blend-mode:color-burn
-mix-blend-hard-light=mix-blend-mode:hard-light
-bg-blend-hard-light=background-blend-mode:hard-light
-mix-blend-soft-light=mix-blend-mode:soft-light
-bg-blend-soft-light=background-blend-mode:soft-light
-mix-blend-difference=mix-blend-mode:difference
-bg-blend-difference=background-blend-mode:difference
-mix-blend-exclusion=mix-blend-mode:exclusion
-bg-blend-exclusion=background-blend-mode:exclusion
-mix-blend-hue=mix-blend-mode:hue
-bg-blend-hue=background-blend-mode:hue
-mix-blend-saturation=mix-blend-mode:saturation
-bg-blend-saturation=background-blend-mode:saturation
-mix-blend-color=mix-blend-mode:color
-bg-blend-color=background-blend-mode:color
-mix-blend-luminosity=mix-blend-mode:luminosity
-bg-blend-luminosity=background-blend-mode:luminosity
-mix-blend-plus-darker=mix-blend-mode:plus-darker
-bg-blend-plus-darker=background-blend-mode:plus-darker
-mix-blend-plus-lighter=mix-blend-mode:plus-lighter
-bg-blend-plus-lighter=background-blend-mode:plus-lighter
-scroll-smooth=scroll-behavior:smooth
-scroll-auto=scroll-behavior:auto
-snap-start=scroll-snap-align:start
-snap-end=scroll-snap-align:end
-snap-center=scroll-snap-align:center
-snap-align-none=scroll-snap-align:none
-snap-normal=scroll-snap-stop:normal
-snap-always=scroll-snap-stop:always
-backface-visible=backface-visibility:visible
-backface-hidden=backface-visibility:hidden
-perspective-origin-center=perspective-origin:center
-perspective-origin-top=perspective-origin:top
-perspective-origin-top-right=perspective-origin:100% 0
-perspective-origin-right=perspective-origin:right
-perspective-origin-bottom-right=perspective-origin:100% 100%
-perspective-origin-bottom=perspective-origin:bottom
-perspective-origin-bottom-left=perspective-origin:0 100%
-perspective-origin-left=perspective-origin:left
-perspective-origin-top-left=perspective-origin:0 0
-justify-baseline=justify-content:baseline
-justify-normal=justify-content:normal
-content-normal=align-content:normal
-content-baseline=align-content:baseline
-content-stretch=align-content:stretch
-justify-self-auto=justify-self:auto
-justify-self-start=justify-self:start
-justify-self-end=justify-self:end
-justify-self-center=justify-self:center
-justify-self-stretch=justify-self:stretch
-place-self-auto=place-self:auto
-place-self-start=place-self:start
-place-self-end=place-self:end
-place-self-center=place-self:center
-place-self-stretch=place-self:stretch
-place-items-start=place-items:start
-place-items-end=place-items:end
-place-items-baseline=place-items:baseline
-place-items-stretch=place-items:stretch
-place-content-start=place-content:start
-place-content-end=place-content:end
-place-content-between=place-content:space-between
-place-content-around=place-content:space-around
-place-content-evenly=place-content:space-evenly
-place-content-baseline=place-content:baseline
-place-content-stretch=place-content:stretch
-grid-flow-row=grid-auto-flow:row
-grid-flow-col=grid-auto-flow:column
-grid-flow-dense=grid-auto-flow:dense
-grid-flow-row-dense=grid-auto-flow:row dense
-grid-flow-col-dense=grid-auto-flow:column dense
-auto-cols-auto=grid-auto-columns:auto
-auto-cols-min=grid-auto-columns:min-content
-auto-cols-max=grid-auto-columns:max-content
-auto-cols-fr=grid-auto-columns:minmax(0, 1fr)
-auto-rows-auto=grid-auto-rows:auto
-auto-rows-min=grid-auto-rows:min-content
-auto-rows-max=grid-auto-rows:max-content
-auto-rows-fr=grid-auto-rows:minmax(0, 1fr)
-row-auto=grid-row:auto
-col-auto=grid-column:auto
-origin-center=transform-origin:center
-origin-top=transform-origin:top
-origin-top-right=transform-origin:100% 0
-origin-right=transform-origin:right
-origin-bottom-right=transform-origin:100% 100%
-origin-bottom=transform-origin:bottom
-origin-bottom-left=transform-origin:0 100%
-origin-left=transform-origin:left
-origin-top-left=transform-origin:0 0
-transform-3d=transform-style:preserve-3d
-transform-flat=transform-style:flat
-transform-content=transform-box:content-box
-transform-border=transform-box:border-box
-transform-fill=transform-box:fill-box
-transform-stroke=transform-box:stroke-box
-transform-view=transform-box:view-box
-self-center-safe=align-self:safe center
-self-end-safe=align-self:safe flex-end
-self-baseline-last=align-self:last baseline
-items-center-safe=align-items:safe center
-items-end-safe=align-items:safe flex-end
-items-baseline-last=align-items:last baseline
-justify-center-safe=justify-content:safe center
-justify-end-safe=justify-content:safe flex-end
-content-center-safe=align-content:safe center
-content-end-safe=align-content:safe flex-end
-justify-items-center-safe=justify-items:safe center
-justify-items-end-safe=justify-items:safe end
-justify-self-center-safe=justify-self:safe center
-justify-self-end-safe=justify-self:safe flex-end
-place-content-center-safe=place-content:safe center
-place-content-end-safe=place-content:safe end
-place-items-center-safe=place-items:safe center
-place-items-end-safe=place-items:safe end
-place-self-center-safe=place-self:safe center
-place-self-end-safe=place-self:safe end
-table-caption=display:table-caption
-table-column=display:table-column
-table-column-group=display:table-column-group
-table-footer-group=display:table-footer-group
-table-header-group=display:table-header-group
-table-row-group=display:table-row-group
-inline-table=display:inline-table
-forced-color-adjust-auto=forced-color-adjust:auto
-forced-color-adjust-none=forced-color-adjust:none
-@container=container-type:inline-size
-@container-normal=container-type:normal
 hyphens-none=-webkit-hyphens:none;hyphens:none
 hyphens-manual=-webkit-hyphens:manual;hyphens:manual
-hyphens-auto=-webkit-hyphens:auto;hyphens:auto
-scheme-normal=color-scheme:normal
-scheme-light=color-scheme:light
-scheme-dark=color-scheme:dark
-scheme-light-dark=color-scheme:light dark
-scheme-only-light=color-scheme:only light
-scheme-only-dark=color-scheme:only dark
-font-stretch-ultra-condensed=font-stretch:ultra-condensed
-font-stretch-extra-condensed=font-stretch:extra-condensed
-font-stretch-condensed=font-stretch:condensed
-font-stretch-semi-condensed=font-stretch:semi-condensed
-font-stretch-normal=font-stretch:normal
-font-stretch-semi-expanded=font-stretch:semi-expanded
-font-stretch-expanded=font-stretch:expanded
-font-stretch-extra-expanded=font-stretch:extra-expanded
-font-stretch-ultra-expanded=font-stretch:ultra-expanded
-overscroll-auto=overscroll-behavior:auto
-overscroll-contain=overscroll-behavior:contain
-overscroll-none=overscroll-behavior:none
-overscroll-x-auto=overscroll-behavior-x:auto
-overscroll-x-contain=overscroll-behavior-x:contain
-overscroll-x-none=overscroll-behavior-x:none
-overscroll-y-auto=overscroll-behavior-y:auto
-overscroll-y-contain=overscroll-behavior-y:contain
-overscroll-y-none=overscroll-behavior-y:none
-mask-circle=--tw-mask-radial-shape:circle
-mask-ellipse=--tw-mask-radial-shape:ellipse
-mask-radial-closest-side=--tw-mask-radial-size:closest-side
-mask-radial-closest-corner=--tw-mask-radial-size:closest-corner
-mask-radial-farthest-side=--tw-mask-radial-size:farthest-side
-mask-radial-farthest-corner=--tw-mask-radial-size:farthest-corner
-mask-top-left=mask-position:left top
-mask-top-right=mask-position:right top
-mask-bottom-left=mask-position:left bottom
-mask-bottom-right=mask-position:right bottom`;
+hyphens-auto=-webkit-hyphens:auto;hyphens:auto`;

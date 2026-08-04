@@ -26,6 +26,8 @@ What remains in JS: a candidate parser (small, well-specified grammar), a varian
 
 **Size target: ≤ 40 KB min engine + ~20 KB static CSS** (theme + preflight + prose), vs ~200 KB
 for the UnoCSS stack it would replace in colight, and ~150 KB+ for `@tailwindcss/browser`.
+_(Landed at 51 KB min / 16 KB gz — see the M3.5 note: the 40 KB figure was written before we
+knew ~72% of the engine is irreducible CSS vocabulary, and it should be read as ~16 KB gz.)_
 **Perf target: sub-millisecond flush** for a 500-token document (Map dispatch, no rule-regex
 cascade), enabling a **fully synchronous** engine — CSS exists before `tw()` returns, no
 microtask flush, no one-frame-unstyled caveat, no `settled()` promise.
@@ -231,12 +233,36 @@ append-only injection only if the bench says it matters.
 > `oklab(from <color> l a b / N%)` fallbacks; rule-nested at-rules flatten to sibling rules
 > under a media wrapper; `marker:` fans out ×4.
 >
-> **M3.5 (open): size architecture.** The 40 KB-min engine target needs the functional-utility
-> table expressed as packed declarative specs interpreted by generic executors — packing the
-> _statics_ table netted only ~2 KB because handler code, not data, dominates. Deferred until
-> after the colight migration decision; budgets in size-budget.json are regression ceilings at
-> current measured values. gz (the network number) is already ~7× smaller than the UnoCSS
-> stack.
+> **M3.5 results (2026-08-04): size rework done.** Engine **73.6 → 51.0 KB min (−31%)**,
+> **18.8 → 16.0 KB gz (−15%)**; engine+assets 100.4 → 77.8 KB min, 26.5 → 23.8 KB gz.
+> Conformance held at tier-1 283/283 and the full 20 000-token sweep 20000/20000 throughout —
+> every step was gated on the harness. Bench unchanged (cold 500-token ~1.55 ms vs ~1.48 ms
+> baseline, warm token ~0.002 ms).
+>
+> The engine now has two layers. Most functional utilities are `kindUtil(props, kinds, opts)`
+> calls: a property list plus an ordered list of **value kinds** (`#` spacing scale, `i`/`I`
+> bare int and int→px, `d` degrees, `%`/`%v` percentages, `f`/`r` fractions, `a` arbitrary,
+> `c` custom property, `T:ns` theme namespace, `K:`/`S:`/`W:` keyword forms), run by one
+> interpreter that tries each kind in order and applies negation uniformly. Whole families
+> that are pure suffix algebra — padding/margin/scroll-\*/inset, border sides, rounded corners,
+> the rotate/skew/scale axes, the percentage filters — are generated from small tables rather
+> than written out. The static table was repacked from one line per utility to **one line per
+> CSS property** (`property|prefix|entry;entry…`, where a bare entry is its own value), which
+> alone took statics from 19.0 → 8.5 KB.
+>
+> Deliberately left hand-written, because the DSL would obscure rather than shorten them: the
+> masks, gradient stops and `bg-linear/conic/radial`, `transition` and `text` (three utilities
+> under one root), `container`, `divide`/`space`, and `drop-shadow` (it splits its value across
+> a size and a value property). `shadow`/`inset-shadow`/`text-shadow` were unified into one
+> `shadowFamily` factory since they were near-duplicates of each other; `ring`/`inset-ring`
+> likewise share `ringUtil`.
+>
+> **The 40 KB-min target is not reachable by refactoring, and the goal should be retired.**
+> Of the 51 KB minified engine, **~37.7 KB (72%) is string-literal data** — the Tailwind v4
+> property and keyword vocabulary plus the packed statics table — leaving only ~14.5 KB of
+> code. Shrinking further would mean dropping utilities, not restructuring them. gz is the
+> honest number for a runtime engine anyway (that vocabulary compresses well), and the full
+> stack ships at ~24 KB gz against ~200 KB for the UnoCSS stack it replaces.
 
 **M4 — Publish prep.** Publish as `@colight/twilight` (bare `twilight` and `tw4` are taken on
 npm; the scoped name also keeps the colight org visible in the credit). README with the

@@ -1,5 +1,5 @@
 {
-  "comment": "Bytes, regression ceilings — tighten only. PLAN's aspirational 40KB-min engine needs the declarative-table rework (see PLAN M3.5 note); current architecture floors around ~70KB min / ~18KB gz. The gz numbers are the network-relevant ones: full stack ~26KB gz vs ~200KB for the UnoCSS stack it replaces.",
-  "engine": { "min": 76000, "gz": 19500 },
-  "engine+assets": { "min": 104000, "gz": 27500 }
+  "comment": "Bytes, regression ceilings — tighten only. Set just above the measured values after the M3.5 spec-driven rework (engine 52259 min / 16345 gz). PLAN's aspirational 40KB-min engine is not reachable by refactoring: ~72% of the minified engine is string data (the Tailwind v4 property/keyword vocabulary and the packed statics table), leaving only ~14.5KB of actual code. The gz numbers are the network-relevant ones: full stack ~24KB gz vs ~200KB for the UnoCSS stack it replaces.",
+  "engine": { "min": 53000, "gz": 16600 },
+  "engine+assets": { "min": 80000, "gz": 24400 }
 }

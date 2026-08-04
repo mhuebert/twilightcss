@@ -32,47 +32,58 @@ const d = (prop: string, value: string) => ({ prop, value });
 const out = (nodes: Node[], properties?: PropDef[]): UtilityOutput =>
   properties ? { nodes, properties } : { nodes };
 
+/** `divide-*` / `space-*` target the element's non-last children */
+const siblingWrap = (sel: string) => `:where(${sel} > :not(:last-child))`;
+
 // ---------- @property groups (order matches oracle emission) ----------
-const P = (name: string, initial?: string, syntax = "*"): PropDef =>
-  initial === undefined
+// Every registered property twilight emits lives under `--tw-`, so `P` takes
+// the bare suffix and adds the prefix.
+const P = (suffix: string, initial?: string, syntax = "*"): PropDef => {
+  const name = `--tw-${suffix}`;
+  return initial === undefined
     ? { name, syntax, inherits: false }
     : { name, syntax, inherits: false, initial };
+};
 
-const BORDER_STYLE_PROPS = [P("--tw-border-style", "solid")];
-const FONT_WEIGHT_PROPS = [P("--tw-font-weight")];
-const LEADING_PROPS = [P("--tw-leading")];
-const TRACKING_PROPS = [P("--tw-tracking")];
-const DURATION_PROPS = [P("--tw-duration")];
-const EASE_PROPS = [P("--tw-ease")];
+const BORDER_STYLE_PROPS = [P("border-style", "solid")];
+const FONT_WEIGHT_PROPS = [P("font-weight")];
+const LEADING_PROPS = [P("leading")];
+const TRACKING_PROPS = [P("tracking")];
+const DURATION_PROPS = [P("duration")];
+const EASE_PROPS = [P("ease")];
 const SHADOW_PROPS = [
-  P("--tw-shadow", "0 0 #0000"),
-  P("--tw-shadow-color"),
-  P("--tw-shadow-alpha", "100%", "<percentage>"),
-  P("--tw-inset-shadow", "0 0 #0000"),
-  P("--tw-inset-shadow-color"),
-  P("--tw-inset-shadow-alpha", "100%", "<percentage>"),
-  P("--tw-ring-color"),
-  P("--tw-ring-shadow", "0 0 #0000"),
-  P("--tw-inset-ring-color"),
-  P("--tw-inset-ring-shadow", "0 0 #0000"),
-  P("--tw-ring-inset"),
-  P("--tw-ring-offset-width", "0px", "<length>"),
-  P("--tw-ring-offset-color", "#fff"),
-  P("--tw-ring-offset-shadow", "0 0 #0000"),
+  P("shadow", "0 0 #0000"),
+  P("shadow-color"),
+  P("shadow-alpha", "100%", "<percentage>"),
+  P("inset-shadow", "0 0 #0000"),
+  P("inset-shadow-color"),
+  P("inset-shadow-alpha", "100%", "<percentage>"),
+  P("ring-color"),
+  P("ring-shadow", "0 0 #0000"),
+  P("inset-ring-color"),
+  P("inset-ring-shadow", "0 0 #0000"),
+  P("ring-inset"),
+  P("ring-offset-width", "0px", "<length>"),
+  P("ring-offset-color", "#fff"),
+  P("ring-offset-shadow", "0 0 #0000"),
 ];
 const TRANSLATE_PROPS = [
-  P("--tw-translate-x", "0"),
-  P("--tw-translate-y", "0"),
-  P("--tw-translate-z", "0"),
+  P("translate-x", "0"),
+  P("translate-y", "0"),
+  P("translate-z", "0"),
 ];
 const NUMERIC_PROPS = [
-  P("--tw-ordinal"),
-  P("--tw-slashed-zero"),
-  P("--tw-numeric-figure"),
-  P("--tw-numeric-spacing"),
-  P("--tw-numeric-fraction"),
+  P("ordinal"),
+  P("slashed-zero"),
+  P("numeric-figure"),
+  P("numeric-spacing"),
+  P("numeric-fraction"),
 ];
-const OUTLINE_STYLE_PROPS = [P("--tw-outline-style", "solid")];
+const OUTLINE_STYLE_PROPS = [P("outline-style", "solid")];
+const BORDER_SPACING_PROPS = [
+  P("border-spacing-x", "0", "<length>"),
+  P("border-spacing-y", "0", "<length>"),
+];
 
 const BOX_SHADOW_VALUE =
   "var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)";
@@ -236,40 +247,21 @@ function spacingUtil(
     negative?: boolean;
     fraction?: boolean;
     full?: boolean;
-    named?: Record<string, string>;
   } = {},
 ): Handler {
-  return (rawValue, ctx) => {
-    if (rawValue === null) return null;
-    if (ctx.negative && !opts.negative) return null;
-    if (!opts.fraction && ctx.modifier !== null) return null;
-    const joined = opts.fraction ? rejoinFraction(rawValue, ctx) : rawValue;
-    if (joined === undefined) return null;
-    const value = joined!;
-    let css: string | null = null;
-    if (value === "px") css = ctx.negative ? "-1px" : "1px";
-    else if (value === "auto" && opts.auto && !ctx.negative) css = "auto";
-    else if (value === "full" && opts.full)
-      css = ctx.negative ? "-100%" : "100%";
-    else if (opts.named && value in opts.named && !ctx.negative)
-      css = opts.named[value]!;
-    else if (opts.fraction && fraction(value))
-      css = ctx.negative ? `calc(${fraction(value)} * -1)` : fraction(value)!;
-    else if (isArbitrary(value)) {
-      const a = arbitraryValue(value);
-      css = ctx.negative ? `calc(${a} * -1)` : a;
-    } else {
-      const cp = customProp(value);
-      if (cp) css = ctx.negative ? `calc(${cp} * -1)` : cp;
-      else {
-        const n = bareSpacing(value);
-        if (n === null) return null;
-        css = spacingCalc(n, ctx.negative);
-      }
-    }
-    if (css === null) return null;
-    return out(props.map((p) => d(p, css!)));
-  };
+  return kindUtil(
+    props,
+    [
+      "S:px=1px=-1px",
+      ...(opts.auto ? ["K:auto=auto"] : []),
+      ...(opts.full ? ["S:full=100%=-100%"] : []),
+      ...(opts.fraction ? ["f"] : []),
+      "a",
+      "c",
+      "#",
+    ],
+    { negative: opts.negative, fraction: opts.fraction },
+  );
 }
 
 /** color-emitting utility (bg-*, text color, border color, …) */
@@ -289,44 +281,55 @@ const SIZE_NAMED: Record<string, string> = {
   max: "max-content",
   fit: "fit-content",
 };
+const SIZE_NAMED_KINDS = Object.entries(SIZE_NAMED).map(
+  ([k, v]) => `K:${k}=${v}`,
+);
+// The `cursor-*` keywords: every one of them passes straight through as the
+// CSS value, so a word list is all the table needs.
+const CURSOR_KEYWORDS =
+  "auto default pointer wait text move help not-allowed none context-menu progress cell crosshair vertical-text alias copy no-drop grab grabbing all-scroll col-resize row-resize n-resize e-resize s-resize w-resize ne-resize nw-resize se-resize sw-resize ew-resize ns-resize nesw-resize nwse-resize zoom-in zoom-out";
+
+/** rotate/skew/hue-rotate: a bare angle (negatable) or an arbitrary (not) */
+const ANGLE_KINDS = ["d", "a!"];
+/** rounded-*: the two literal corners, then the radius namespace */
+const ROUNDED_KINDS = [
+  "K:none=0",
+  "K:full=calc(infinity * 1px)",
+  "T:radius",
+  "a",
+  "c",
+];
+/** translate-*: spacing scale plus the px/full/fraction escape hatches */
+const TRANSLATE_KINDS = [
+  "S:px=1px=-1px",
+  "S:full=100%=-100%",
+  "f",
+  "a",
+  "c",
+  "#",
+];
 
 function sizeUtil(
   prop: string,
   axis: "w" | "h",
   opts: { container?: boolean } = {},
 ): Handler {
-  return (rawValue, ctx) => {
-    if (rawValue === null || ctx.negative) return null;
-    const joined = rejoinFraction(rawValue, ctx);
-    if (joined === undefined) return null;
-    const value = joined!;
-    const vp = axis === "w" ? "vw" : "vh";
-    const named: Record<string, string> = {
-      ...SIZE_NAMED,
-      screen: `100${vp}`,
-      dvw: "100dvw",
-      dvh: "100dvh",
-      lvw: "100lvw",
-      lvh: "100lvh",
-      svw: "100svw",
-      svh: "100svh",
-    };
-    let css: string | null = null;
-    if (value === "px") css = "1px";
-    else if (value === "lh") css = "1lh";
-    else if (value in named) css = named[value]!;
-    else if (opts.container && ctx.theme.has(`--container-${value}`))
-      css = `var(--container-${value})`;
-    else if (fraction(value)) css = fraction(value);
-    else if (isArbitrary(value)) css = arbitraryValue(value);
-    else if (customProp(value)) css = customProp(value);
-    else {
-      const n = bareSpacing(value);
-      if (n === null) return null;
-      css = spacingCalc(n, false);
-    }
-    return out([d(prop, css!)]);
-  };
+  return kindUtil(
+    [prop],
+    [
+      "K:px=1px",
+      "K:lh=1lh",
+      ...SIZE_NAMED_KINDS,
+      `K:screen=100${axis === "w" ? "vw" : "vh"}`,
+      "V",
+      ...(opts.container ? ["T:container"] : []),
+      "f",
+      "a",
+      "c",
+      "#",
+    ],
+    { fraction: true },
+  );
 }
 
 /** bare-int → px scale (underline-offset, outline-offset, border width…) */
@@ -335,11 +338,197 @@ function bareToPx(v: string, negative: boolean): string | null {
   return negative ? `calc(${v}px * -1)` : `${v}px`;
 }
 
+// ---------- the generic value engine ----------
+//
+// Most functional utilities are the same program: try a fixed ordered list of
+// *value kinds* against the candidate's value, take the first that produces a
+// CSS string, then write it into one or more properties. Encoding that list as
+// a compact spec and running it through one interpreter — instead of writing
+// the ladder out per utility — is what buys the size back. The kind vocabulary:
+//
+//   #     bare number on the spacing scale → calc(var(--spacing) * N)
+//   i     bare integer, verbatim (z-index, tab-size, stroke-width)
+//   I     bare integer → Npx (border width, ring width, decoration thickness)
+//   d     bare number → Ndeg (rotate, skew, hue-rotate)
+//   %     bare number → N%, numerically normalized (opacity, scale)
+//   %v    bare number → N%, digits kept verbatim (zoom)
+//   P     a literal percentage, passed through (font-stretch)
+//   m     bare number → Nms (duration, delay)
+//   f     fraction a/b → calc(a / b * 100%)
+//   r     ratio a/b, passed through unchanged (aspect-ratio)
+//   a     arbitrary [value]
+//   c     custom property (--x)
+//   V     viewport unit word (dvw, lvh, …) → 100<unit>
+//   G     positive int → repeat(N, minmax(0, 1fr))  (grid-cols/rows)
+//   N     int → span N / span N  (col-span/row-span)
+//   T:ns  theme namespace → var(--ns-value) if present
+//   W:a b c  a word list; a matching word is its own CSS value
+//   K:k=v named keyword map entry (never negatable)
+//   S:k=p=n signed keyword: `p` normally, the literal `n` when negative
+//
+// A kind may carry a trailing `!` meaning "reject when the candidate is
+// negative" (v4 accepts `-z-10` but not `-z-[3]`). Otherwise negation wraps the
+// resolved value in `calc(… * -1)`; the `#` kind bakes its own sign because
+// `calc(var(--spacing) * -4)` is what the oracle prints, not a double wrap.
+
+type Kind = string;
+
+/** memoized split of a `W:` kind's word list */
+const wordSets = new Map<string, Set<string>>();
+function wordSet(list: string): Set<string> {
+  let s = wordSets.get(list);
+  if (s === undefined) wordSets.set(list, (s = new Set(list.split(" "))));
+  return s;
+}
+
+/**
+ * Resolve one value kind. Returns the CSS text, or null if this kind does not
+ * apply to `v`. `arg` carries the kind's parameter (theme namespace, keyword).
+ */
+function resolveKind(
+  kind: Kind,
+  arg: string,
+  v: string,
+  ctx: Ctx,
+): string | null {
+  switch (kind) {
+    case "#": {
+      const n = bareSpacing(v);
+      return n === null ? null : spacingCalc(n, ctx.negative);
+    }
+    case "i":
+      return /^\d+$/.test(v) ? v : null;
+    case "I":
+      return /^\d+$/.test(v) ? `${v}px` : null;
+    case "d":
+      return /^\d+(\.\d+)?$/.test(v) ? `${v}deg` : null;
+    case "%":
+      // `opacity-50` normalizes through Number (so `.5` → `0.5%`), while
+      // `zoom-150` keeps the literal digits — hence the two kinds.
+      return /^\d+(\.\d+)?$/.test(v) ? `${Number(v)}%` : null;
+    case "%v":
+      return /^\d+(\.\d+)?$/.test(v) ? `${v}%` : null;
+    case "P":
+      return /^\d+(\.\d+)?%$/.test(v) ? v : null;
+    case "m":
+      return /^\d+(\.\d+)?$/.test(v) ? `${v}ms` : null;
+    case "f":
+      return fraction(v);
+    case "r":
+      return /^\d+\/\d+$/.test(v) ? v : null; // ratio kept as-is (aspect)
+    case "V":
+      return /^[dls]v[wh]$/.test(v) ? `100${v}` : null; // dvw/lvh/svh…
+    case "G": // grid-cols-3 → repeat(3, minmax(0, 1fr)); zero is rejected
+      return /^\d+$/.test(v) && Number(v) > 0
+        ? `repeat(${v}, minmax(0, 1fr))`
+        : null;
+    case "N": // col-span-2 → span 2 / span 2
+      return /^\d+$/.test(v) ? `span ${v} / span ${v}` : null;
+    case "a":
+      return isArbitrary(v) ? arbitraryValue(v) : null;
+    case "c":
+      return customProp(v);
+    case "T":
+      return ctx.theme.has(`--${arg}-${v}`) ? `var(--${arg}-${v})` : null;
+    case "K": {
+      const eq = arg.indexOf("=");
+      return arg.slice(0, eq) === v ? arg.slice(eq + 1) : null;
+    }
+    case "W": // a space-separated word list; the word is its own CSS value
+      return wordSet(arg).has(v) ? v : null;
+    case "S": {
+      // signed keyword `k=positive=negative`: `-mt-px` is `-1px`, not
+      // `calc(1px * -1)` — the oracle prints the literal negative form.
+      const [k, pos, neg] = arg.split("=");
+      return k === v ? (ctx.negative ? neg! : pos!) : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Run an ordered kind list against a value. Returns the resolved CSS with
+ * negation already applied, or null if nothing matched (or the match cannot
+ * be negated and the candidate is negative).
+ */
+function runKinds(kinds: string[], v: string, ctx: Ctx): string | null {
+  for (const spec of kinds) {
+    const colon = spec.indexOf(":");
+    let kind = colon === -1 ? spec : spec.slice(0, colon);
+    const arg = colon === -1 ? "" : spec.slice(colon + 1);
+    const noNeg = kind.endsWith("!");
+    if (noNeg) kind = kind.slice(0, -1);
+    const css = resolveKind(kind, arg, v, ctx);
+    if (css === null) continue;
+    if (!ctx.negative) return css;
+    if (noNeg || kind === "K") return null;
+    // `#` and `S` bake their own sign; everything else wraps in calc
+    if (kind === "#" || kind === "S") return css;
+    return `calc(${css} * -1)`;
+  }
+  return null;
+}
+
+/**
+ * The workhorse: build a Handler from a property list and a kind list.
+ * `opts.modifier` — false (default) rejects any modifier; `opts.negative`
+ * gates whether `-` is accepted at all; `opts.fraction` rejoins the parser's
+ * value/modifier split back into `a/b` first.
+ */
+function kindUtil(
+  props: string[],
+  kinds: string[],
+  opts: {
+    negative?: boolean;
+    fraction?: boolean;
+    /** value for the bare root (`border`, `ring`, `blur` with no value) */
+    bare?: string;
+    /** CSS function to wrap the resolved value in: `rotateX`, `blur`, … */
+    fn?: string;
+    /** declarations appended after the props (the shared `transform:` line) */
+    tail?: Node[];
+    properties?: PropDef[];
+  } = {},
+): Handler {
+  return (rawValue, ctx) => {
+    if (ctx.negative && !opts.negative) return null;
+    let value = rawValue;
+    if (opts.fraction) {
+      const joined = rejoinFraction(rawValue, ctx);
+      if (joined === undefined) return null;
+      value = joined;
+    } else if (ctx.modifier !== null) return null;
+    let css: string | null;
+    if (value === null) {
+      if (opts.bare === undefined || ctx.negative) return null;
+      css = opts.bare;
+    } else css = runKinds(kinds, value, ctx);
+    if (css === null) return null;
+    if (opts.fn) css = `${opts.fn}(${css})`;
+    const nodes: Node[] = props.map((p) => d(p, css!));
+    if (opts.tail) nodes.push(...opts.tail);
+    return out(nodes, opts.properties);
+  };
+}
+
 // ---------- static utilities ----------
-// Value: array of [prop, value] declarations.
-// Static utilities: packed table (see statics.ts), parsed once at init.
+// Unpack the packed table (see statics.ts for the format) once at init into
+// name → [prop, value][]. Grouped lines carry a `|`; the trailing multi-decl
+// lines use the plain `name=prop:value;…` form.
 const S: Record<string, [string, string][]> = {};
 for (const line of STATICS.split("\n")) {
+  const bar = line.indexOf("|");
+  if (bar !== -1) {
+    const bar2 = line.indexOf("|", bar + 1);
+    const prop = line.slice(0, bar);
+    const prefix = line.slice(bar + 1, bar2);
+    for (const entry of line.slice(bar2 + 1).split(";")) {
+      const eq = entry.indexOf("=");
+      const name = eq === -1 ? entry : entry.slice(0, eq);
+      S[prefix + name] = [[prop, eq === -1 ? name : entry.slice(eq + 1)]];
+    }
+    continue;
+  }
   const eq = line.indexOf("=");
   S[line.slice(0, eq)] = line
     .slice(eq + 1)
@@ -353,70 +542,6 @@ for (const line of STATICS.split("\n")) {
 // ---------- functional utilities ----------
 
 const F: Record<string, Handler> = {
-  p: spacingUtil(["padding"]),
-  px: spacingUtil(["padding-inline"]),
-  py: spacingUtil(["padding-block"]),
-  ps: spacingUtil(["padding-inline-start"]),
-  pe: spacingUtil(["padding-inline-end"]),
-  pt: spacingUtil(["padding-top"]),
-  pr: spacingUtil(["padding-right"]),
-  pb: spacingUtil(["padding-bottom"]),
-  pl: spacingUtil(["padding-left"]),
-  m: spacingUtil(["margin"], { auto: true, negative: true }),
-  mx: spacingUtil(["margin-inline"], { auto: true, negative: true }),
-  my: spacingUtil(["margin-block"], { auto: true, negative: true }),
-  ms: spacingUtil(["margin-inline-start"], { auto: true, negative: true }),
-  me: spacingUtil(["margin-inline-end"], { auto: true, negative: true }),
-  mt: spacingUtil(["margin-top"], { auto: true, negative: true }),
-  mr: spacingUtil(["margin-right"], { auto: true, negative: true }),
-  mb: spacingUtil(["margin-bottom"], { auto: true, negative: true }),
-  ml: spacingUtil(["margin-left"], { auto: true, negative: true }),
-  gap: spacingUtil(["gap"]),
-  "gap-x": spacingUtil(["column-gap"]),
-  "gap-y": spacingUtil(["row-gap"]),
-  inset: spacingUtil(["inset"], {
-    auto: true,
-    negative: true,
-    fraction: true,
-    full: true,
-  }),
-  "inset-x": spacingUtil(["inset-inline"], {
-    auto: true,
-    negative: true,
-    fraction: true,
-    full: true,
-  }),
-  "inset-y": spacingUtil(["inset-block"], {
-    auto: true,
-    negative: true,
-    fraction: true,
-    full: true,
-  }),
-  top: spacingUtil(["top"], {
-    auto: true,
-    negative: true,
-    fraction: true,
-    full: true,
-  }),
-  right: spacingUtil(["right"], {
-    auto: true,
-    negative: true,
-    fraction: true,
-    full: true,
-  }),
-  bottom: spacingUtil(["bottom"], {
-    auto: true,
-    negative: true,
-    fraction: true,
-    full: true,
-  }),
-  left: spacingUtil(["left"], {
-    auto: true,
-    negative: true,
-    fraction: true,
-    full: true,
-  }),
-
   w: sizeUtil("width", "w", { container: true }),
   h: sizeUtil("height", "h"),
   "min-w": sizeUtil("min-width", "w", { container: true }),
@@ -430,121 +555,61 @@ const F: Record<string, Handler> = {
       const inline = ctx.theme.inline.get(`--max-width-${value}`);
       if (inline !== undefined) return out([d("max-width", inline)]);
     }
-    return sizeUtil("max-width", "w", { container: true })(value, ctx);
+    return MAX_W(value, ctx);
   },
   "max-h": sizeUtil("max-height", "h"),
   size: (value, ctx) => {
-    const w = sizeUtil("width", "w")(value, ctx);
-    const h = sizeUtil("height", "h")(value, ctx);
+    const w = SIZE_W(value, ctx);
+    const h = SIZE_H(value, ctx);
     if (!w || !h) return null;
     return out([...w.nodes, ...h.nodes]);
   },
 
-  bg: (value, ctx) => {
-    if (value === null || ctx.negative) return null;
-    return colorDecl(["background-color"], value, ctx);
-  },
+  bg: colorUtil(["background-color"]),
 
+  // `text-*` is three utilities wearing one root: a theme font size (whose
+  // modifier is a line height), an arbitrary that may be a size or a colour,
+  // and otherwise a colour.
   text: (value, ctx) => {
     if (value === null || ctx.negative) return null;
-    // font-size path
     if (ctx.theme.has(`--text-${value}`)) {
-      const nodes = [d("font-size", `var(--text-${value})`)];
-      if (ctx.modifier !== null) {
-        let lh: string | null = null;
-        const n = bareSpacing(ctx.modifier);
-        if (n !== null) lh = spacingCalc(n, false);
-        else if (ctx.theme.has(`--leading-${ctx.modifier}`))
-          lh = `var(--leading-${ctx.modifier})`;
-        else if (isArbitrary(ctx.modifier)) lh = arbitraryValue(ctx.modifier);
-        if (lh === null) return null;
-        nodes.push(d("line-height", lh));
-        return out(nodes);
-      }
-      nodes.push(
-        d(
-          "line-height",
-          `var(--tw-leading, var(--text-${value}--line-height))`,
-        ),
-      );
-      return out(nodes);
+      const size = d("font-size", `var(--text-${value})`);
+      if (ctx.modifier === null)
+        return out([
+          size,
+          d(
+            "line-height",
+            `var(--tw-leading, var(--text-${value}--line-height))`,
+          ),
+        ]);
+      // the modifier is a line height in its own right
+      const lh = runKinds(["#", "T:leading", "a"], ctx.modifier, {
+        ...ctx,
+        negative: false,
+      });
+      return lh === null ? null : out([size, d("line-height", lh)]);
     }
     if (isArbitrary(value)) {
-      let a = arbitraryValue(value);
+      const a = arbitraryValue(value);
+      // an explicit `length:`/`size:` hint forces the font-size reading
       if (a.startsWith("length:") || a.startsWith("size:"))
         return out([d("font-size", a.slice(a.indexOf(":") + 1))]);
-      if (a.startsWith("color:")) return colorDecl(["color"], value, ctx);
-      if (looksLikeColor(a) || a.startsWith("var("))
+      if (a.startsWith("color:") || looksLikeColor(a) || a.startsWith("var("))
         return colorDecl(["color"], value, ctx);
-      if (ctx.modifier !== null) return null;
-      return out([d("font-size", a)]);
+      return ctx.modifier !== null ? null : out([d("font-size", a)]);
     }
     return colorDecl(["color"], value, ctx);
   },
 
-  border: borderUtil(""),
-  "border-t": borderUtil("top"),
-  "border-r": borderUtil("right"),
-  "border-b": borderUtil("bottom"),
-  "border-l": borderUtil("left"),
-  "border-x": borderUtil("inline"),
-  "border-y": borderUtil("block"),
-  "border-s": borderUtil("inline-start"),
-  "border-e": borderUtil("inline-end"),
+  "outline-offset": kindUtil(["outline-offset"], ["I", "a"], {
+    negative: true,
+  }),
 
-  rounded: roundedUtil([""]),
-  "rounded-t": roundedUtil(["top-left", "top-right"]),
-  "rounded-r": roundedUtil(["top-right", "bottom-right"]),
-  "rounded-b": roundedUtil(["bottom-right", "bottom-left"]),
-  "rounded-l": roundedUtil(["top-left", "bottom-left"]),
-  "rounded-tl": roundedUtil(["top-left"]),
-  "rounded-tr": roundedUtil(["top-right"]),
-  "rounded-br": roundedUtil(["bottom-right"]),
-  "rounded-bl": roundedUtil(["bottom-left"]),
-  "rounded-s": roundedUtil(["start-start", "end-start"]),
-  "rounded-e": roundedUtil(["start-end", "end-end"]),
-  "rounded-ss": roundedUtil(["start-start"]),
-  "rounded-se": roundedUtil(["start-end"]),
-  "rounded-es": roundedUtil(["end-start"]),
-  "rounded-ee": roundedUtil(["end-end"]),
+  z: kindUtil(["z-index"], ["K:auto=auto", "i", "a!", "c!"], {
+    negative: true,
+  }),
 
-  "outline-offset": (value, ctx) => {
-    if (value === null || ctx.modifier) return null;
-    const px = bareToPx(value, ctx.negative);
-    if (px) return out([d("outline-offset", px)]);
-    if (isArbitrary(value))
-      return out([
-        d(
-          "outline-offset",
-          ctx.negative
-            ? `calc(${arbitraryValue(value)} * -1)`
-            : arbitraryValue(value),
-        ),
-      ]);
-    return null;
-  },
-
-  z: (value, ctx) => {
-    if (value === null || ctx.modifier) return null;
-    if (value === "auto")
-      return ctx.negative ? null : out([d("z-index", "auto")]);
-    if (/^\d+$/.test(value))
-      return out([d("z-index", ctx.negative ? `calc(${value} * -1)` : value)]);
-    if (isArbitrary(value) && !ctx.negative)
-      return out([d("z-index", arbitraryValue(value))]);
-    if (customProp(value) && !ctx.negative)
-      return out([d("z-index", customProp(value)!)]);
-    return null;
-  },
-
-  opacity: (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    if (/^\d+(\.\d+)?$/.test(value))
-      return out([d("opacity", `${Number(value)}%`)]);
-    if (isArbitrary(value)) return out([d("opacity", arbitraryValue(value))]);
-    if (customProp(value)) return out([d("opacity", customProp(value)!)]);
-    return null;
-  },
+  opacity: kindUtil(["opacity"], ["%", "a", "c"]),
 
   font: (value, ctx) => {
     if (value === null || ctx.negative || ctx.modifier) return null;
@@ -571,82 +636,34 @@ const F: Record<string, Handler> = {
     return null;
   },
 
-  leading: (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    let v: string | null = null;
-    if (value === "none") v = "1";
-    else if (ctx.theme.has(`--leading-${value}`)) v = `var(--leading-${value})`;
-    else if (isArbitrary(value)) v = arbitraryValue(value);
-    else if (customProp(value)) v = customProp(value);
-    else {
-      const n = bareSpacing(value);
-      if (n === null) return null;
-      v = spacingCalc(n, false);
-    }
-    return out([d("--tw-leading", v!), d("line-height", v!)], LEADING_PROPS);
-  },
+  leading: kindUtil(
+    ["--tw-leading", "line-height"],
+    ["K:none=1", "T:leading", "a", "c", "#"],
+    { properties: LEADING_PROPS },
+  ),
 
-  tracking: (value, ctx) => {
-    if (value === null || ctx.modifier) return null;
-    let v: string | null = null;
-    if (ctx.theme.has(`--tracking-${value}`)) {
-      v = `var(--tracking-${value})`;
-      if (ctx.negative) v = `calc(${v} * -1)`;
-    } else if (isArbitrary(value)) {
-      v = arbitraryValue(value);
-      if (ctx.negative) v = `calc(${v} * -1)`;
-    } else if (customProp(value)) {
-      v = customProp(value)!;
-      if (ctx.negative) v = `calc(${v} * -1)`;
-    } else return null;
-    return out([d("--tw-tracking", v), d("letter-spacing", v)], TRACKING_PROPS);
-  },
+  tracking: kindUtil(
+    ["--tw-tracking", "letter-spacing"],
+    ["T:tracking", "a", "c"],
+    { negative: true, properties: TRACKING_PROPS },
+  ),
 
-  duration: (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    let v: string | null = null;
-    if (value === "initial") v = "initial";
-    else if (/^\d+(\.\d+)?$/.test(value)) v = `${value}ms`;
-    else if (isArbitrary(value)) v = arbitraryValue(value);
-    else return null;
-    return out(
-      [d("--tw-duration", v), d("transition-duration", v)],
-      DURATION_PROPS,
-    );
-  },
+  duration: kindUtil(
+    ["--tw-duration", "transition-duration"],
+    ["K:initial=initial", "m", "a"],
+    { properties: DURATION_PROPS },
+  ),
 
-  delay: (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    if (/^\d+(\.\d+)?$/.test(value))
-      return out([d("transition-delay", `${value}ms`)]);
-    if (isArbitrary(value))
-      return out([d("transition-delay", arbitraryValue(value))]);
-    return null;
-  },
+  delay: kindUtil(["transition-delay"], ["m", "a"]),
 
-  ease: (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    if (value === "initial")
-      return out([d("--tw-ease", "initial")], EASE_PROPS);
-    let v: string | null = null;
-    if (value === "linear") v = "linear";
-    else if (ctx.theme.has(`--ease-${value}`)) v = `var(--ease-${value})`;
-    else if (isArbitrary(value)) v = arbitraryValue(value);
-    else return null;
-    return out(
-      [d("--tw-ease", v), d("transition-timing-function", v)],
-      EASE_PROPS,
-    );
-  },
+  // `ease-initial` sets only the custom property — the one shape that does not
+  // fit the "same value into every prop" mould, so it stays a special case.
+  ease: (value, ctx) =>
+    value === "initial" && !ctx.negative && !ctx.modifier
+      ? out([d("--tw-ease", "initial")], EASE_PROPS)
+      : EASE_REST(value, ctx),
 
-  animate: (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    if (value === "none") return out([d("animation", "none")]);
-    if (ctx.theme.has(`--animate-${value}`))
-      return out([d("animation", `var(--animate-${value})`)]);
-    if (isArbitrary(value)) return out([d("animation", arbitraryValue(value))]);
-    return null;
-  },
+  animate: kindUtil(["animation"], ["K:none=none", "T:animate", "a"]),
 
   transition: (value, ctx) => {
     if (ctx.negative || ctx.modifier) return null;
@@ -684,138 +701,56 @@ const F: Record<string, Handler> = {
     return null;
   },
 
-  shadow: (value, ctx) => {
-    if (ctx.negative) return null;
-    const boxShadow = d("box-shadow", BOX_SHADOW_VALUE);
-    if (value === "none")
-      return ctx.modifier
-        ? null
-        : out([d("--tw-shadow", "0 0 #0000"), boxShadow], SHADOW_PROPS);
-    if (value === "initial")
-      return ctx.modifier
-        ? null
-        : out([d("--tw-shadow-color", "initial")], SHADOW_PROPS);
-    const themeKey = value === null ? "--shadow" : `--shadow-${value}`;
-    const raw = ctx.theme.get(themeKey);
-    if (raw !== undefined) {
-      const alpha = shadowAlpha(ctx);
-      if (alpha === undefined) return null;
-      const folded = foldShadowColors(
-        raw,
-        "--tw-shadow-color",
-        alpha ?? undefined,
-      );
-      const nodes = alpha ? [d("--tw-shadow-alpha", alpha)] : [];
-      return out([...nodes, d("--tw-shadow", folded), boxShadow], SHADOW_PROPS);
-    }
-    if (value !== null && isArbitrary(value)) {
-      const arb = arbitraryValue(value);
-      if (!looksLikeColor(arb) && !arb.startsWith("var(")) {
-        if (ctx.modifier) return null;
-        return out(
-          [
-            d("--tw-shadow", foldShadowColors(arb, "--tw-shadow-color")),
-            boxShadow,
-          ],
-          SHADOW_PROPS,
-        );
-      }
-    }
-    if (value === null) return null;
-    const cm = shadowColorValue(value, ctx, "--tw-shadow-alpha");
-    if (cm === null) return null;
-    return out([d("--tw-shadow-color", cm)], SHADOW_PROPS);
-  },
+  shadow: shadowFamily({
+    prop: "--tw-shadow",
+    ns: "shadow",
+    none: "0 0 #0000",
+    tail: [d("box-shadow", BOX_SHADOW_VALUE)],
+    properties: SHADOW_PROPS,
+  }),
 
-  ring: (value, ctx) => {
-    if (ctx.negative) return null;
-    const width =
-      value === null
-        ? "1px"
-        : /^\d+$/.test(value)
-          ? `${value}px`
-          : isArbitrary(value)
-            ? arbitraryValue(value)
-            : null;
-    if (width !== null && !ctx.modifier) {
-      const looksColor = width !== null && looksLikeColor(width);
-      if (!looksColor)
-        return out(
-          [
-            d(
-              "--tw-ring-shadow",
-              `var(--tw-ring-inset,) 0 0 0 calc(${width} + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor)`,
-            ),
-            d("box-shadow", BOX_SHADOW_VALUE),
-          ],
-          SHADOW_PROPS,
-        );
-    }
-    if (value === null) return null;
-    const c = resolveColor(value, ctx);
-    if (c === null) return null;
-    const cm = withOpacity(c, ctx.modifier);
-    if (cm === null) return null;
-    return out([d("--tw-ring-color", cm)]);
-  },
+  ring: ringUtil(
+    "--tw-ring-shadow",
+    "--tw-ring-color",
+    (w) =>
+      `var(--tw-ring-inset,) 0 0 0 calc(${w} + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor)`,
+  ),
 
   outline: (value, ctx) => {
     if (ctx.negative) return null;
-    // outline / outline-2 width path, outline-color path
-    if (value === null)
-      return ctx.modifier
-        ? null
-        : out(
-            [
-              d("outline-style", "var(--tw-outline-style)"),
-              d("outline-width", "1px"),
-            ],
-            OUTLINE_STYLE_PROPS,
-          );
-    if (/^\d+$/.test(value) && !ctx.modifier)
-      return out(
-        [
-          d("outline-style", "var(--tw-outline-style)"),
-          d("outline-width", `${value}px`),
-        ],
-        OUTLINE_STYLE_PROPS,
-      );
-    const c = resolveColor(value, ctx);
-    if (c !== null) {
-      const cm = withOpacity(c, ctx.modifier);
-      if (cm === null) return null;
-      return out([d("outline-color", cm)]);
+    // `outline` / `outline-2` set a width; anything else is a colour
+    if (!ctx.modifier) {
+      const w = value === null ? "1px" : runKinds(["I"], value, ctx);
+      if (w !== null)
+        return out(
+          [
+            d("outline-style", "var(--tw-outline-style)"),
+            d("outline-width", w),
+          ],
+          OUTLINE_STYLE_PROPS,
+        );
     }
-    return null;
+    if (value === null) return null;
+    return colorDecl(["outline-color"], value, ctx);
   },
 
-  "underline-offset": (value, ctx) => {
-    if (value === null || ctx.modifier) return null;
-    if (value === "auto")
-      return ctx.negative ? null : out([d("text-underline-offset", "auto")]);
-    const px = bareToPx(value, ctx.negative);
-    if (px) return out([d("text-underline-offset", px)]);
-    if (isArbitrary(value))
-      return out([
-        d(
-          "text-underline-offset",
-          ctx.negative
-            ? `calc(${arbitraryValue(value)} * -1)`
-            : arbitraryValue(value),
-        ),
-      ]);
-    return null;
-  },
+  "underline-offset": kindUtil(
+    ["text-underline-offset"],
+    ["K:auto=auto", "I", "a"],
+    { negative: true },
+  ),
 
+  // thickness keywords first (decoration-2, decoration-auto), colours after
   decoration: (value, ctx) => {
     if (value === null || ctx.negative) return null;
-    // thickness: decoration-2, decoration-[3px]; colors otherwise
-    if (/^\d+$/.test(value) && !ctx.modifier)
-      return out([d("text-decoration-thickness", `${value}px`)]);
-    if (value === "auto" && !ctx.modifier)
-      return out([d("text-decoration-thickness", "auto")]);
-    if (value === "from-font" && !ctx.modifier)
-      return out([d("text-decoration-thickness", "from-font")]);
+    if (!ctx.modifier) {
+      const t = runKinds(
+        ["I", "K:auto=auto", "K:from-font=from-font"],
+        value,
+        ctx,
+      );
+      if (t !== null) return out([d("text-decoration-thickness", t)]);
+    }
     return colorDecl(["text-decoration-color"], value, ctx);
   },
 
@@ -839,21 +774,11 @@ const F: Record<string, Handler> = {
     if (cm === null) return null;
     return {
       nodes: [d("border-color", cm)],
-      selectorWrap: (sel) => `:where(${sel} > :not(:last-child))`,
+      selectorWrap: siblingWrap,
     };
   },
 
-  flex: (value, ctx) => {
-    if (value === null || ctx.negative) return null;
-    const joined = rejoinFraction(value, ctx);
-    if (joined === undefined) return null;
-    const v = joined!;
-    if (/^\d+$/.test(v)) return out([d("flex", v)]);
-    if (fraction(v)) return out([d("flex", fraction(v)!)]);
-    if (isArbitrary(v)) return out([d("flex", arbitraryValue(v))]);
-    if (customProp(v)) return out([d("flex", customProp(v)!)]);
-    return null;
-  },
+  flex: kindUtil(["flex"], ["i", "f", "a", "c"], { fraction: true }),
 
   placeholder: (value, ctx) => {
     if (value === null || ctx.negative) return null;
@@ -864,100 +789,46 @@ const F: Record<string, Handler> = {
 
   "ring-offset": (value, ctx) => {
     if (value === null || ctx.negative) return null;
-    if (/^\d+$/.test(value) && !ctx.modifier)
-      return out([
-        d("--tw-ring-offset-width", `${value}px`),
-        d(
-          "--tw-ring-offset-shadow",
-          "var(--tw-ring-inset,) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color)",
-        ),
-      ]);
-    if (isArbitrary(value) && !ctx.modifier) {
-      const a = arbitraryValue(value);
-      if (!looksLikeColor(a))
+    if (!ctx.modifier) {
+      const w = runKinds(["I", "a"], value, ctx);
+      if (w !== null && !looksLikeColor(w))
         return out([
-          d("--tw-ring-offset-width", a),
+          d("--tw-ring-offset-width", w),
           d(
             "--tw-ring-offset-shadow",
             "var(--tw-ring-inset,) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color)",
           ),
         ]);
     }
-    const c = resolveColor(value, ctx);
-    if (c === null) return null;
-    const cm = withOpacity(c, ctx.modifier);
-    if (cm === null) return null;
-    return out([d("--tw-ring-offset-color", cm)]);
+    return colorDecl(["--tw-ring-offset-color"], value, ctx);
   },
 
-  cursor: (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    const CURSORS = new Set([
-      "auto",
-      "default",
-      "pointer",
-      "wait",
-      "text",
-      "move",
-      "help",
-      "not-allowed",
-      "none",
-      "context-menu",
-      "progress",
-      "cell",
-      "crosshair",
-      "vertical-text",
-      "alias",
-      "copy",
-      "no-drop",
-      "grab",
-      "grabbing",
-      "all-scroll",
-      "col-resize",
-      "row-resize",
-      "n-resize",
-      "e-resize",
-      "s-resize",
-      "w-resize",
-      "ne-resize",
-      "nw-resize",
-      "se-resize",
-      "sw-resize",
-      "ew-resize",
-      "ns-resize",
-      "nesw-resize",
-      "nwse-resize",
-      "zoom-in",
-      "zoom-out",
-    ]);
-    if (CURSORS.has(value)) return out([d("cursor", value)]);
-    if (isArbitrary(value)) return out([d("cursor", arbitraryValue(value)!)]);
-    if (customProp(value)) return out([d("cursor", customProp(value)!)]);
-    return null;
-  },
+  cursor: kindUtil(["cursor"], ["W:" + CURSOR_KEYWORDS, "a", "c"]),
 
-  fill: (value, ctx) => {
-    if (value === null || ctx.negative) return null;
-    if (value === "none") return out([d("fill", "none")]);
-    return colorDecl(["fill"], value, ctx);
-  },
-  stroke: (value, ctx) => {
-    if (value === null || ctx.negative) return null;
-    if (value === "none") return out([d("stroke", "none")]);
-    if (/^\d+$/.test(value) && !ctx.modifier)
-      return out([d("stroke-width", value)]);
-    return colorDecl(["stroke"], value, ctx);
-  },
-  accent: (value, ctx) => {
-    if (value === null || ctx.negative) return null;
-    if (value === "auto") return out([d("accent-color", "auto")]);
-    return colorDecl(["accent-color"], value, ctx);
-  },
-  caret: (value, ctx) => {
-    if (value === null || ctx.negative) return null;
-    return colorDecl(["caret-color"], value, ctx);
-  },
+  fill: colorUtil(["fill"], { none: true }),
+  stroke: colorUtil(["stroke"], { none: true, width: "stroke-width" }),
+  accent: colorUtil(["accent-color"], { auto: true }),
+  caret: colorUtil(["caret-color"]),
 };
+
+/**
+ * Color utilities with the usual keyword escape hatches in front: a `none` or
+ * `auto` literal, or (for `stroke`) a bare integer that means a width rather
+ * than a color. Anything else goes through the color pipeline.
+ */
+function colorUtil(
+  props: string[],
+  opts: { none?: boolean; auto?: boolean; width?: string } = {},
+): Handler {
+  return (value, ctx) => {
+    if (value === null || ctx.negative) return null;
+    if (opts.none && value === "none") return out([d(props[0]!, "none")]);
+    if (opts.auto && value === "auto") return out([d(props[0]!, "auto")]);
+    if (opts.width && /^\d+$/.test(value) && !ctx.modifier)
+      return out([d(opts.width, value)]);
+    return colorDecl(props, value, ctx);
+  };
+}
 
 /**
  * Rewrite each shadow's color to var(--tw-shadow-color, <color>) like v4.
@@ -990,6 +861,108 @@ function foldShadowColors(
     .join(", ");
 }
 
+/**
+ * `shadow-*`, `inset-shadow-*` and `text-shadow-*` are the same program with
+ * different property names: a `none` reset, an `initial` colour reset, a theme
+ * lookup whose colours fold through `var(--tw-…-color, …)` with the opacity
+ * modifier becoming an alpha, an arbitrary non-colour value taking the same
+ * fold, and anything else read as a colour. `drop-shadow` stays separate — it
+ * splits its value across a size property and a value property, which none of
+ * these three do.
+ */
+/**
+ * `ring` and `inset-ring`: a bare or arbitrary width writes the family's
+ * box-shadow slot, anything else is a colour. An arbitrary value that reads as
+ * a colour falls through to the colour path rather than becoming a width.
+ */
+function ringUtil(
+  shadowProp: string,
+  colorProp: string,
+  shadow: (width: string) => string,
+): Handler {
+  return (value, ctx) => {
+    if (ctx.negative) return null;
+    if (!ctx.modifier) {
+      const w = value === null ? "1px" : runKinds(["I", "a"], value, ctx);
+      if (w !== null && !looksLikeColor(w))
+        return out(
+          [d(shadowProp, shadow(w)), d("box-shadow", BOX_SHADOW_VALUE)],
+          SHADOW_PROPS,
+        );
+    }
+    if (value === null) return null;
+    const c = resolveColor(value, ctx);
+    if (c === null) return null;
+    const cm = withOpacity(c, ctx.modifier);
+    return cm === null ? null : out([d(colorProp, cm)]);
+  };
+}
+
+function shadowFamily(cfg: {
+  /** where the shadow list is written */
+  prop: string;
+  /** theme namespace, without the leading `--` */
+  ns: string;
+  /** the `-none` reset value */
+  none: string;
+  /** `--tw-<x>-color`; defaults to `<prop>-color` */
+  colorProp?: string;
+  /** `--tw-<x>-alpha`; defaults to `<prop>-alpha` */
+  alphaProp?: string;
+  /** prefix added to an arbitrary (not themed) value */
+  arbPrefix?: string;
+  tail?: Node[];
+  properties: PropDef[];
+}): Handler {
+  const colorProp = cfg.colorProp ?? `${cfg.prop}-color`;
+  const alphaProp = cfg.alphaProp ?? `${cfg.prop}-alpha`;
+  const tail = cfg.tail ?? [];
+  return (value, ctx) => {
+    if (ctx.negative) return null;
+    if (value === "none" || value === "initial") {
+      if (ctx.modifier) return null;
+      return out(
+        value === "none"
+          ? [d(cfg.prop, cfg.none), ...tail]
+          : [d(colorProp, "initial")],
+        cfg.properties,
+      );
+    }
+    const raw = ctx.theme.get(
+      value === null ? `--${cfg.ns}` : `--${cfg.ns}-${value}`,
+    );
+    if (raw !== undefined) {
+      const alpha = shadowAlpha(ctx);
+      if (alpha === undefined) return null;
+      return out(
+        [
+          ...(alpha ? [d(alphaProp, alpha)] : []),
+          d(cfg.prop, foldShadowColors(raw, colorProp, alpha ?? undefined)),
+          ...tail,
+        ],
+        cfg.properties,
+      );
+    }
+    if (value !== null && isArbitrary(value)) {
+      const a = arbitraryValue(value);
+      if (!looksLikeColor(a) && !a.startsWith("var(")) {
+        if (ctx.modifier) return null;
+        return out(
+          [
+            d(cfg.prop, (cfg.arbPrefix ?? "") + foldShadowColors(a, colorProp)),
+            ...tail,
+          ],
+          cfg.properties,
+        );
+      }
+    }
+    if (value === null) return null;
+    const cm = shadowColorValue(value, ctx, alphaProp);
+    if (cm === null) return null;
+    return out([d(colorProp, cm)], cfg.properties);
+  };
+}
+
 /** numeric opacity modifier for shadow-family alpha machinery */
 function shadowAlpha(ctx: Ctx): string | null | undefined {
   if (ctx.modifier === null) return null; // no modifier
@@ -997,95 +970,56 @@ function shadowAlpha(ctx: Ctx): string | null | undefined {
   return undefined; // unsupported modifier form
 }
 
-function splitTopLevelCommas(s: string): string[] {
+/**
+ * Split on a separator that is not inside parentheses. Comma splitting keeps
+ * empty parts (an empty shadow entry is still an entry); space splitting drops
+ * them, so that runs of whitespace collapse.
+ */
+function splitTopLevel(s: string, sep: string): string[] {
   const parts: string[] = [];
   let depth = 0;
   let start = 0;
+  const keepEmpty = sep === ",";
   for (let i = 0; i < s.length; i++) {
     if (s[i] === "(") depth++;
     else if (s[i] === ")") depth--;
-    else if (s[i] === "," && depth === 0) {
-      parts.push(s.slice(start, i));
+    else if (s[i] === sep && depth === 0) {
+      if (keepEmpty || i > start) parts.push(s.slice(start, i));
       start = i + 1;
     }
   }
-  parts.push(s.slice(start));
+  if (keepEmpty || s.length > start) parts.push(s.slice(start));
   return parts;
 }
+const splitTopLevelCommas = (s: string) => splitTopLevel(s, ",");
+const splitTopLevelSpaces = (s: string) => splitTopLevel(s, " ");
 
-function splitTopLevelSpaces(s: string): string[] {
-  const parts: string[] = [];
-  let depth = 0;
-  let start = 0;
-  for (let i = 0; i < s.length; i++) {
-    if (s[i] === "(") depth++;
-    else if (s[i] === ")") depth--;
-    else if (s[i] === " " && depth === 0) {
-      if (i > start) parts.push(s.slice(start, i));
-      start = i + 1;
-    }
-  }
-  if (s.length > start) parts.push(s.slice(start));
-  return parts;
-}
-
+const BORDER_STYLES = /^(solid|dashed|dotted|double|hidden|none)$/;
 function borderUtil(side: string): Handler {
-  const widthProps =
-    side === ""
-      ? ["border-width"]
-      : side === "inline" || side === "block"
-        ? [`border-${side}-width`]
-        : [`border-${side}-width`];
-  const styleProps =
-    side === ""
-      ? ["border-style"]
-      : side === "inline" || side === "block"
-        ? [`border-${side}-style`]
-        : [`border-${side}-style`];
-  const colorProps = side === "" ? ["border-color"] : [`border-${side}-color`];
-  const BORDER_STYLES = new Set([
-    "solid",
-    "dashed",
-    "dotted",
-    "double",
-    "hidden",
-    "none",
-  ]);
+  // `border` → border-width; `border-t` → border-top-width; and so on
+  const infix = side === "" ? "" : `-${side}`;
+  const widthProp = `border${infix}-width`;
+  const styleProp = `border${infix}-style`;
+  const width = (w: string) =>
+    out(
+      [d(styleProp, "var(--tw-border-style)"), d(widthProp, w)],
+      BORDER_STYLE_PROPS,
+    );
   return (value, ctx) => {
     if (ctx.negative) return null;
-    // width path
-    if (value === null || /^\d+$/.test(value)) {
-      if (ctx.modifier) return null;
-      const w = value === null ? "1px" : `${value}px`;
-      return out(
-        [
-          ...styleProps.map((p) => d(p, "var(--tw-border-style)")),
-          ...widthProps.map((p) => d(p, w)),
-        ],
-        BORDER_STYLE_PROPS,
-      );
-    }
-    if (BORDER_STYLES.has(value)) {
-      if (ctx.modifier) return null;
-      return out([
-        d("--tw-border-style", value),
-        ...styleProps.map((p) => d(p, value)),
-      ]);
-    }
-    if (isArbitrary(value)) {
-      const a = arbitraryValue(value);
-      if (!looksLikeColor(a) && !a.startsWith("var(")) {
-        if (ctx.modifier) return null;
-        return out(
-          [
-            ...styleProps.map((p) => d(p, "var(--tw-border-style)")),
-            ...widthProps.map((p) => d(p, a)),
-          ],
-          BORDER_STYLE_PROPS,
-        );
+    if (value === null) return ctx.modifier ? null : width("1px");
+    if (ctx.modifier === null) {
+      const w = runKinds(["I"], value, ctx);
+      if (w !== null) return width(w);
+      if (BORDER_STYLES.test(value))
+        return out([d("--tw-border-style", value), d(styleProp, value)]);
+      // an arbitrary value is a width unless it reads as a colour
+      if (isArbitrary(value)) {
+        const a = arbitraryValue(value);
+        if (!looksLikeColor(a) && !a.startsWith("var(")) return width(a);
       }
     }
-    return colorDecl(colorProps, value, ctx);
+    return colorDecl([`border${infix}-color`], value, ctx);
   };
 }
 
@@ -1093,70 +1027,40 @@ function roundedUtil(corners: string[]): Handler {
   const props = corners.map((c) =>
     c === "" ? "border-radius" : `border-${c}-radius`,
   );
+  const valued = kindUtil(props, ROUNDED_KINDS);
   return (value, ctx) => {
+    // the bare `rounded` root reads the deprecated inline `--radius` value,
+    // which only exists once the theme is built — so it is read per call
+    if (value !== null) return valued(value, ctx);
     if (ctx.negative || ctx.modifier) return null;
-    let v: string | null = null;
-    if (value === null) v = ctx.theme.get("--radius") ?? null;
-    else if (value === "none") v = "0";
-    else if (value === "full") v = "calc(infinity * 1px)";
-    else if (ctx.theme.has(`--radius-${value}`)) v = `var(--radius-${value})`;
-    else if (isArbitrary(value)) v = arbitraryValue(value);
-    else if (customProp(value)) v = customProp(value);
-    if (v === null) return null;
-    return out(props.map((p) => d(p, v!)));
+    const v = ctx.theme.get("--radius");
+    return v === undefined ? null : out(props.map((p) => d(p, v)));
   };
 }
 
 function gridTemplate(prop: string): Handler {
-  return (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    if (/^\d+$/.test(value) && Number(value) > 0)
-      return out([d(prop, `repeat(${value}, minmax(0, 1fr))`)]);
-    if (value === "none") return out([d(prop, "none")]);
-    if (value === "subgrid") return out([d(prop, "subgrid")]);
-    if (isArbitrary(value)) return out([d(prop, arbitraryValue(value))]);
-    return null;
-  };
+  return kindUtil(
+    [prop],
+    [
+      "G", // positive int → repeat(N, minmax(0, 1fr))
+      "K:none=none",
+      "K:subgrid=subgrid",
+      "a",
+    ],
+  );
 }
 
 function gridSpan(prop: string): Handler {
-  return (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    if (/^\d+$/.test(value))
-      return out([d(prop, `span ${value} / span ${value}`)]);
-    if (value === "full") return out([d(prop, "1 / -1")]);
-    return null;
-  };
+  return kindUtil([prop], ["N", "K:full=1 / -1"]);
 }
 
 function translateUtil(axis: "x" | "y"): Handler {
-  return (rawValue, ctx) => {
-    if (rawValue === null) return null;
-    const joined = rejoinFraction(rawValue, ctx);
-    if (joined === undefined) return null;
-    const value = joined!;
-    let v: string | null = null;
-    if (value === "px") v = ctx.negative ? "-1px" : "1px";
-    else if (value === "full") v = ctx.negative ? "-100%" : "100%";
-    else if (fraction(value))
-      v = ctx.negative ? `calc(${fraction(value)} * -1)` : fraction(value)!;
-    else if (isArbitrary(value))
-      v = ctx.negative
-        ? `calc(${arbitraryValue(value)} * -1)`
-        : arbitraryValue(value);
-    else {
-      const n = bareSpacing(value);
-      if (n === null) return null;
-      v = spacingCalc(n, ctx.negative);
-    }
-    return out(
-      [
-        d(`--tw-translate-${axis}`, v!),
-        d("translate", "var(--tw-translate-x) var(--tw-translate-y)"),
-      ],
-      TRANSLATE_PROPS,
-    );
-  };
+  return kindUtil([`--tw-translate-${axis}`], TRANSLATE_KINDS, {
+    negative: true,
+    fraction: true,
+    tail: [d("translate", "var(--tw-translate-x) var(--tw-translate-y)")],
+    properties: TRANSLATE_PROPS,
+  });
 }
 
 function spaceUtil(axis: "x" | "y"): Handler {
@@ -1166,18 +1070,10 @@ function spaceUtil(axis: "x" | "y"): Handler {
       : ["margin-block-start", "margin-block-end"];
   return (value, ctx) => {
     if (value === null || ctx.modifier) return null;
-    let v: string | null = null;
-    if (value === "px") v = ctx.negative ? "-1px" : "1px";
-    else if (isArbitrary(value))
-      v = ctx.negative
-        ? `calc(${arbitraryValue(value)} * -1)`
-        : arbitraryValue(value);
-    else {
-      const n = bareSpacing(value);
-      if (n === null) return null;
-      v = spacingCalc(n, ctx.negative);
-    }
-    const rev = `--tw-space-${axis}-reverse`;
+    const v = runKinds(["S:px=1px=-1px", "a", "#"], value, ctx);
+    if (v === null) return null;
+    const suffix = `space-${axis}-reverse`;
+    const rev = `--tw-${suffix}`;
     const zero = v === "0px";
     return {
       nodes: [
@@ -1185,8 +1081,8 @@ function spaceUtil(axis: "x" | "y"): Handler {
         d(props[0]!, zero ? "0" : `calc(${v} * var(${rev}))`),
         d(props[1]!, zero ? "0" : `calc(${v} * calc(1 - var(${rev})))`),
       ],
-      properties: [P(rev, "0")],
-      selectorWrap: (sel) => `:where(${sel} > :not(:last-child))`,
+      properties: [P(suffix, "0")],
+      selectorWrap: siblingWrap,
     };
   };
 }
@@ -1206,12 +1102,10 @@ function divideUtil(axis: "x" | "y"): Handler {
         ];
   return (value, ctx) => {
     if (ctx.negative || ctx.modifier) return null;
-    let w: string | null = null;
-    if (value === null) w = "1px";
-    else if (/^\d+$/.test(value)) w = `${value}px`;
-    else if (isArbitrary(value)) w = arbitraryValue(value);
-    else return null;
-    const rev = `--tw-divide-${axis}-reverse`;
+    const w = value === null ? "1px" : runKinds(["I", "a"], value, ctx);
+    if (w === null) return null;
+    const suffix = `divide-${axis}-reverse`;
+    const rev = `--tw-${suffix}`;
     return {
       nodes: [
         d(rev, "0"),
@@ -1219,8 +1113,8 @@ function divideUtil(axis: "x" | "y"): Handler {
         d(widthA, `calc(${w} * var(${rev}))`),
         d(widthB, `calc(${w} * calc(1 - var(${rev})))`),
       ],
-      properties: [P(rev, "0"), ...BORDER_STYLE_PROPS],
-      selectorWrap: (sel) => `:where(${sel} > :not(:last-child))`,
+      properties: [P(suffix, "0"), ...BORDER_STYLE_PROPS],
+      selectorWrap: siblingWrap,
     };
   };
 }
@@ -1228,61 +1122,57 @@ function divideUtil(axis: "x" | "y"): Handler {
 // ---------- composed families: filters, transforms, gradients, masks ----------
 
 const GRADIENT_PROPS = [
-  P("--tw-gradient-position"),
-  P("--tw-gradient-from", "#0000", "<color>"),
-  P("--tw-gradient-via", "#0000", "<color>"),
-  P("--tw-gradient-to", "#0000", "<color>"),
-  P("--tw-gradient-stops"),
-  P("--tw-gradient-via-stops"),
-  P("--tw-gradient-from-position", "0%", "<length-percentage>"),
-  P("--tw-gradient-via-position", "50%", "<length-percentage>"),
-  P("--tw-gradient-to-position", "100%", "<length-percentage>"),
+  P("gradient-position"),
+  P("gradient-from", "#0000", "<color>"),
+  P("gradient-via", "#0000", "<color>"),
+  P("gradient-to", "#0000", "<color>"),
+  P("gradient-stops"),
+  P("gradient-via-stops"),
+  P("gradient-from-position", "0%", "<length-percentage>"),
+  P("gradient-via-position", "50%", "<length-percentage>"),
+  P("gradient-to-position", "100%", "<length-percentage>"),
 ];
 const FILTER_PROPS = [
-  P("--tw-blur"),
-  P("--tw-brightness"),
-  P("--tw-contrast"),
-  P("--tw-grayscale"),
-  P("--tw-hue-rotate"),
-  P("--tw-invert"),
-  P("--tw-opacity"),
-  P("--tw-saturate"),
-  P("--tw-sepia"),
-  P("--tw-drop-shadow"),
-  P("--tw-drop-shadow-color"),
-  P("--tw-drop-shadow-alpha", "100%", "<percentage>"),
-  P("--tw-drop-shadow-size"),
+  P("blur"),
+  P("brightness"),
+  P("contrast"),
+  P("grayscale"),
+  P("hue-rotate"),
+  P("invert"),
+  P("opacity"),
+  P("saturate"),
+  P("sepia"),
+  P("drop-shadow"),
+  P("drop-shadow-color"),
+  P("drop-shadow-alpha", "100%", "<percentage>"),
+  P("drop-shadow-size"),
 ];
 const BACKDROP_PROPS = [
-  P("--tw-backdrop-blur"),
-  P("--tw-backdrop-brightness"),
-  P("--tw-backdrop-contrast"),
-  P("--tw-backdrop-grayscale"),
-  P("--tw-backdrop-hue-rotate"),
-  P("--tw-backdrop-invert"),
-  P("--tw-backdrop-opacity"),
-  P("--tw-backdrop-saturate"),
-  P("--tw-backdrop-sepia"),
+  P("backdrop-blur"),
+  P("backdrop-brightness"),
+  P("backdrop-contrast"),
+  P("backdrop-grayscale"),
+  P("backdrop-hue-rotate"),
+  P("backdrop-invert"),
+  P("backdrop-opacity"),
+  P("backdrop-saturate"),
+  P("backdrop-sepia"),
 ];
 const TRANSFORM_PROPS = [
-  P("--tw-rotate-x"),
-  P("--tw-rotate-y"),
-  P("--tw-rotate-z"),
-  P("--tw-skew-x"),
-  P("--tw-skew-y"),
+  P("rotate-x"),
+  P("rotate-y"),
+  P("rotate-z"),
+  P("skew-x"),
+  P("skew-y"),
 ];
-const SCALE_PROPS = [
-  P("--tw-scale-x", "1"),
-  P("--tw-scale-y", "1"),
-  P("--tw-scale-z", "1"),
-];
+const SCALE_PROPS = [P("scale-x", "1"), P("scale-y", "1"), P("scale-z", "1")];
 const TEXT_SHADOW_PROPS = [
-  P("--tw-text-shadow-color"),
-  P("--tw-text-shadow-alpha", "100%", "<percentage>"),
+  P("text-shadow-color"),
+  P("text-shadow-alpha", "100%", "<percentage>"),
 ];
 const SCROLLBAR_PROPS = [
-  P("--tw-scrollbar-thumb", "#0000", "<color>"),
-  P("--tw-scrollbar-track", "#0000", "<color>"),
+  P("scrollbar-thumb", "#0000", "<color>"),
+  P("scrollbar-track", "#0000", "<color>"),
 ];
 
 const FILTER_VALUE =
@@ -1300,6 +1190,59 @@ const backdropDecls = () => [
   d("backdrop-filter", BACKDROP_VALUE),
 ];
 
+// Handlers that a couple of roots delegate into. Built once at module load:
+// building them inside the handler would allocate a closure per compiled
+// token, which the bench notices.
+const MAX_W = sizeUtil("max-width", "w", { container: true });
+const SIZE_W = sizeUtil("width", "w");
+const SIZE_H = sizeUtil("height", "h");
+const EASE_REST = kindUtil(
+  ["--tw-ease", "transition-timing-function"],
+  ["K:linear=linear", "T:ease", "a"],
+  { properties: EASE_PROPS },
+);
+const SCALE_AXES = kindUtil(
+  ["--tw-scale-x", "--tw-scale-y", "--tw-scale-z"],
+  ["%v"],
+  {
+    negative: true,
+    tail: [d("scale", "var(--tw-scale-x) var(--tw-scale-y)")],
+    properties: SCALE_PROPS,
+  },
+);
+const SCALE_REST = kindUtil(["scale"], ["K:none=none", "a!"], {
+  negative: true,
+});
+const TRANSFORM_KEYWORDS = kindUtil(
+  ["transform"],
+  [
+    "K:none=none",
+    `K:gpu=translateZ(0) ${TRANSFORM_VALUE}`,
+    `K:cpu=${TRANSFORM_VALUE}`,
+    "a",
+  ],
+);
+const TRANSLATE_XY = kindUtil(
+  ["--tw-translate-x", "--tw-translate-y"],
+  TRANSLATE_KINDS,
+  {
+    negative: true,
+    fraction: true,
+    tail: [d("translate", "var(--tw-translate-x) var(--tw-translate-y)")],
+    properties: TRANSLATE_PROPS,
+  },
+);
+const TRANSLATE_Z = kindUtil(["--tw-translate-z"], TRANSLATE_KINDS, {
+  negative: true,
+  tail: [
+    d(
+      "translate",
+      "var(--tw-translate-x) var(--tw-translate-y) var(--tw-translate-z)",
+    ),
+  ],
+  properties: TRANSLATE_PROPS,
+});
+
 /** shadow-family color values: color-mix(in oklab, C var(--X-alpha), transparent) */
 function shadowColorValue(
   v: string,
@@ -1312,6 +1255,24 @@ function shadowColorValue(
   const c = withOpacity(base, ctx.modifier);
   if (c === null) return null;
   return `color-mix(in oklab, ${c} var(${alphaVar}), transparent)`;
+}
+
+/**
+ * `blur` and `backdrop-blur`: both read the `--blur-*` namespace and both
+ * spell their reset as a single space rather than `none`, because the filter
+ * chain concatenates `var(--tw-blur,)` slots.
+ */
+function blurUtil(twVar: string, tail: Node[], props: PropDef[]): Handler {
+  return (value, ctx) => {
+    if (ctx.negative || ctx.modifier) return null;
+    if (value === "none") return out([d(twVar, " "), ...tail], props);
+    const arg =
+      value === null
+        ? (ctx.theme.get("--blur") ?? null)
+        : runKinds(["T:blur", "a", "c"], value, ctx);
+    if (arg === null) return null;
+    return out([d(twVar, `blur(${arg})`), ...tail], props);
+  };
 }
 
 /** percentage-taking filter fn (brightness, contrast, …) */
@@ -1336,60 +1297,13 @@ function pctFilter(
 
 const COMPOSED: Record<string, Handler> = {
   // --- filters ---
-  blur: (value, ctx) => {
-    if (ctx.negative || ctx.modifier) return null;
-    let arg: string | null = null;
-    if (value === "none")
-      return out([d("--tw-blur", " "), filterDecl()], FILTER_PROPS);
-    if (value === null) arg = ctx.theme.get("--blur") ?? null;
-    else if (ctx.theme.has(`--blur-${value}`)) arg = `var(--blur-${value})`;
-    else if (isArbitrary(value)) arg = arbitraryValue(value);
-    else if (customProp(value)) arg = customProp(value);
-    if (arg === null) return null;
-    return out([d("--tw-blur", `blur(${arg})`), filterDecl()], FILTER_PROPS);
-  },
-  brightness: pctFilter("brightness", "--tw-brightness", FILTER_PROPS, () => [
-    filterDecl(),
-  ]),
-  contrast: pctFilter("contrast", "--tw-contrast", FILTER_PROPS, () => [
-    filterDecl(),
-  ]),
-  saturate: pctFilter("saturate", "--tw-saturate", FILTER_PROPS, () => [
-    filterDecl(),
-  ]),
-  grayscale: pctFilter(
-    "grayscale",
-    "--tw-grayscale",
-    FILTER_PROPS,
-    () => [filterDecl()],
-    "100%",
-  ),
-  invert: pctFilter(
-    "invert",
-    "--tw-invert",
-    FILTER_PROPS,
-    () => [filterDecl()],
-    "100%",
-  ),
-  sepia: pctFilter(
-    "sepia",
-    "--tw-sepia",
-    FILTER_PROPS,
-    () => [filterDecl()],
-    "100%",
-  ),
-  "hue-rotate": (value, ctx) => {
-    if (value === null || ctx.modifier) return null;
-    let arg: string | null = null;
-    if (/^\d+(\.\d+)?$/.test(value))
-      arg = ctx.negative ? `calc(${value}deg * -1)` : `${value}deg`;
-    else if (isArbitrary(value) && !ctx.negative) arg = arbitraryValue(value);
-    if (arg === null) return null;
-    return out(
-      [d("--tw-hue-rotate", `hue-rotate(${arg})`), filterDecl()],
-      FILTER_PROPS,
-    );
-  },
+  blur: blurUtil("--tw-blur", [filterDecl()], FILTER_PROPS),
+  "hue-rotate": kindUtil(["--tw-hue-rotate"], ANGLE_KINDS, {
+    negative: true,
+    fn: "hue-rotate",
+    tail: [filterDecl()],
+    properties: FILTER_PROPS,
+  }),
   "drop-shadow": (value, ctx) => {
     if (ctx.negative) return null;
     if (value === "none") {
@@ -1398,47 +1312,39 @@ const COMPOSED: Record<string, Handler> = {
     }
     const themeKey =
       value === null ? "--drop-shadow" : `--drop-shadow-${value}`;
-    const raw = ctx.theme.get(themeKey);
-    if (raw !== undefined) {
-      if (ctx.modifier) return null;
-      const size = splitTopLevelCommas(raw)
+    // each comma-separated shadow becomes its own drop-shadow() function,
+    // because the CSS filter property chains them rather than listing them
+    const size = (list: string) =>
+      splitTopLevelCommas(list)
         .map(
           (s) =>
             `drop-shadow(${foldShadowColors(s.trim(), "--tw-drop-shadow-color")})`,
         )
         .join(" ");
-      return out(
+    const sized = (sizeValue: string, dropShadow: string) =>
+      out(
         [
-          d("--tw-drop-shadow-size", size),
-          d(
-            "--tw-drop-shadow",
-            value === null
-              ? "var(--tw-drop-shadow-size)"
-              : `drop-shadow(var(${themeKey}))`,
-          ),
+          d("--tw-drop-shadow-size", sizeValue),
+          d("--tw-drop-shadow", dropShadow),
           filterDecl(),
         ],
         FILTER_PROPS,
+      );
+    const raw = ctx.theme.get(themeKey);
+    if (raw !== undefined) {
+      if (ctx.modifier) return null;
+      return sized(
+        size(raw),
+        value === null
+          ? "var(--tw-drop-shadow-size)"
+          : `drop-shadow(var(${themeKey}))`,
       );
     }
     if (value !== null && isArbitrary(value)) {
       const a = arbitraryValue(value);
       if (!looksLikeColor(a) && !a.startsWith("var(")) {
         if (ctx.modifier) return null;
-        const size = splitTopLevelCommas(a)
-          .map(
-            (s) =>
-              `drop-shadow(${foldShadowColors(s.trim(), "--tw-drop-shadow-color")})`,
-          )
-          .join(" ");
-        return out(
-          [
-            d("--tw-drop-shadow-size", size),
-            d("--tw-drop-shadow", "var(--tw-drop-shadow-size)"),
-            filterDecl(),
-          ],
-          FILTER_PROPS,
-        );
+        return sized(size(a), "var(--tw-drop-shadow-size)");
       }
     }
     if (value === null) return null;
@@ -1455,162 +1361,46 @@ const COMPOSED: Record<string, Handler> = {
   "filter-none": () => out([d("filter", "none")]),
 
   // --- backdrop filters ---
-  "backdrop-blur": (value, ctx) => {
-    if (ctx.negative || ctx.modifier) return null;
-    let arg: string | null = null;
-    if (value === "none")
-      return out(
-        [d("--tw-backdrop-blur", " "), ...backdropDecls()],
-        BACKDROP_PROPS,
-      );
-    if (value === null) arg = ctx.theme.get("--blur") ?? null;
-    else if (ctx.theme.has(`--blur-${value}`)) arg = `var(--blur-${value})`;
-    else if (isArbitrary(value)) arg = arbitraryValue(value);
-    else if (customProp(value)) arg = customProp(value);
-    if (arg === null) return null;
-    return out(
-      [d("--tw-backdrop-blur", `blur(${arg})`), ...backdropDecls()],
-      BACKDROP_PROPS,
-    );
-  },
-  "backdrop-brightness": pctFilter(
-    "brightness",
-    "--tw-backdrop-brightness",
+  "backdrop-blur": blurUtil(
+    "--tw-backdrop-blur",
+    backdropDecls(),
     BACKDROP_PROPS,
-    backdropDecls,
   ),
-  "backdrop-contrast": pctFilter(
-    "contrast",
-    "--tw-backdrop-contrast",
-    BACKDROP_PROPS,
-    backdropDecls,
-  ),
-  "backdrop-saturate": pctFilter(
-    "saturate",
-    "--tw-backdrop-saturate",
-    BACKDROP_PROPS,
-    backdropDecls,
-  ),
-  "backdrop-opacity": pctFilter(
-    "opacity",
-    "--tw-backdrop-opacity",
-    BACKDROP_PROPS,
-    backdropDecls,
-  ),
-  "backdrop-grayscale": pctFilter(
-    "grayscale",
-    "--tw-backdrop-grayscale",
-    BACKDROP_PROPS,
-    backdropDecls,
-    "100%",
-  ),
-  "backdrop-invert": pctFilter(
-    "invert",
-    "--tw-backdrop-invert",
-    BACKDROP_PROPS,
-    backdropDecls,
-    "100%",
-  ),
-  "backdrop-sepia": pctFilter(
-    "sepia",
-    "--tw-backdrop-sepia",
-    BACKDROP_PROPS,
-    backdropDecls,
-    "100%",
-  ),
-  "backdrop-hue-rotate": (value, ctx) => {
-    if (value === null || ctx.modifier) return null;
-    let arg: string | null = null;
-    if (/^\d+(\.\d+)?$/.test(value))
-      arg = ctx.negative ? `calc(${value}deg * -1)` : `${value}deg`;
-    else if (isArbitrary(value) && !ctx.negative) arg = arbitraryValue(value);
-    if (arg === null) return null;
-    return out(
-      [d("--tw-backdrop-hue-rotate", `hue-rotate(${arg})`), ...backdropDecls()],
-      BACKDROP_PROPS,
-    );
-  },
+  "backdrop-hue-rotate": kindUtil(["--tw-backdrop-hue-rotate"], ANGLE_KINDS, {
+    negative: true,
+    fn: "hue-rotate",
+    tail: backdropDecls(),
+    properties: BACKDROP_PROPS,
+  }),
   "backdrop-filter-none": () =>
     out([d("-webkit-backdrop-filter", "none"), d("backdrop-filter", "none")]),
 
   // --- transforms ---
-  rotate: (value, ctx) => {
-    if (value === null || ctx.modifier) return null;
-    if (value === "none")
-      return ctx.negative ? null : out([d("rotate", "none")]);
-    if (/^\d+(\.\d+)?$/.test(value))
-      return out([
-        d("rotate", ctx.negative ? `calc(${value}deg * -1)` : `${value}deg`),
-      ]);
-    if (isArbitrary(value) && !ctx.negative)
-      return out([d("rotate", arbitraryValue(value))]);
-    return null;
-  },
-  scale: (value, ctx) => {
-    if (value === null || ctx.modifier) return null;
-    if (value === "none")
-      return ctx.negative ? null : out([d("scale", "none")]);
-    if (/^\d+(\.\d+)?$/.test(value)) {
-      const v = ctx.negative ? `calc(${value}% * -1)` : `${value}%`;
-      return out(
-        [
-          d("--tw-scale-x", v),
-          d("--tw-scale-y", v),
-          d("--tw-scale-z", v),
-          d("scale", "var(--tw-scale-x) var(--tw-scale-y)"),
-        ],
-        SCALE_PROPS,
-      );
-    }
-    if (isArbitrary(value) && !ctx.negative)
-      return out([d("scale", arbitraryValue(value))]);
-    return null;
-  },
-  transform: (value, ctx) => {
-    if (ctx.negative || ctx.modifier) return null;
-    if (value === null)
-      return out([d("transform", TRANSFORM_VALUE)], TRANSFORM_PROPS);
-    if (value === "none") return out([d("transform", "none")]);
-    if (value === "gpu")
-      return out([d("transform", `translateZ(0) ${TRANSFORM_VALUE}`)]);
-    if (value === "cpu") return out([d("transform", TRANSFORM_VALUE)]);
-    if (isArbitrary(value)) return out([d("transform", arbitraryValue(value))]);
-    return null;
-  },
-  translate: (value, ctx) => {
-    if (value === null) return null;
-    if (value === "none")
-      return ctx.negative || ctx.modifier
+  rotate: kindUtil(["rotate"], ["K:none=none", ...ANGLE_KINDS], {
+    negative: true,
+  }),
+  // `scale-none` and `scale-[…]` write the `scale` shorthand directly, while a
+  // bare number fans out across the three axis custom properties — two
+  // different output shapes under one root, so the dispatch stays explicit.
+  scale: (value, ctx) =>
+    value !== null && /^\d+(\.\d+)?$/.test(value)
+      ? SCALE_AXES(value, ctx)
+      : SCALE_REST(value, ctx),
+  // bare `transform` also declares the @property group; the keyword forms
+  // write a fixed string and do not
+  transform: (value, ctx) =>
+    value === null
+      ? ctx.negative || ctx.modifier
         ? null
-        : out([d("translate", "none")]);
-    const joined = rejoinFraction(value, ctx);
-    if (joined === undefined) return null;
-    const v = translateValue(joined!, ctx);
-    if (v === null) return null;
-    return out(
-      [
-        d("--tw-translate-x", v),
-        d("--tw-translate-y", v),
-        d("translate", "var(--tw-translate-x) var(--tw-translate-y)"),
-      ],
-      TRANSLATE_PROPS,
-    );
-  },
-  "translate-z": (value, ctx) => {
-    if (value === null || ctx.modifier) return null;
-    const v = translateValue(value, ctx);
-    if (v === null) return null;
-    return out(
-      [
-        d("--tw-translate-z", v),
-        d(
-          "translate",
-          "var(--tw-translate-x) var(--tw-translate-y) var(--tw-translate-z)",
-        ),
-      ],
-      TRANSLATE_PROPS,
-    );
-  },
+        : out([d("transform", TRANSFORM_VALUE)], TRANSFORM_PROPS)
+      : TRANSFORM_KEYWORDS(value, ctx),
+  translate: (value, ctx) =>
+    value === "none"
+      ? ctx.negative || ctx.modifier
+        ? null
+        : out([d("translate", "none")])
+      : TRANSLATE_XY(value, ctx),
+  "translate-z": TRANSLATE_Z,
 
   // --- gradient stops ---
   from: gradientStop("from"),
@@ -1618,174 +1408,56 @@ const COMPOSED: Record<string, Handler> = {
   to: gradientStop("to"),
 
   // --- text-shadow ---
-  "text-shadow": (value, ctx) => {
-    if (ctx.negative) return null;
-    if (value === "none")
-      return ctx.modifier
-        ? null
-        : out([d("text-shadow", "none")], TEXT_SHADOW_PROPS);
-    if (value === "initial")
-      return ctx.modifier
-        ? null
-        : out([d("--tw-text-shadow-color", "initial")], TEXT_SHADOW_PROPS);
-    const themeKey =
-      value === null ? "--text-shadow" : `--text-shadow-${value}`;
-    const raw = ctx.theme.get(themeKey);
-    if (raw !== undefined) {
-      const alpha = shadowAlpha(ctx);
-      if (alpha === undefined) return null;
-      const nodes = alpha ? [d("--tw-text-shadow-alpha", alpha)] : [];
-      return out(
-        [
-          ...nodes,
-          d(
-            "text-shadow",
-            foldShadowColors(raw, "--tw-text-shadow-color", alpha ?? undefined),
-          ),
-        ],
-        TEXT_SHADOW_PROPS,
-      );
-    }
-    if (value !== null && isArbitrary(value)) {
-      const a = arbitraryValue(value);
-      if (!looksLikeColor(a) && !a.startsWith("var(")) {
-        if (ctx.modifier) return null;
-        return out(
-          [d("text-shadow", foldShadowColors(a, "--tw-text-shadow-color"))],
-          TEXT_SHADOW_PROPS,
-        );
-      }
-    }
-    if (value === null) return null;
-    const cm = shadowColorValue(value, ctx, "--tw-text-shadow-alpha");
-    if (cm === null) return null;
-    return out([d("--tw-text-shadow-color", cm)], TEXT_SHADOW_PROPS);
-  },
+  // text-shadow writes the real CSS property rather than a `--tw-*` slot, but
+  // its color still folds through `--tw-text-shadow-color` like the others.
+  "text-shadow": shadowFamily({
+    prop: "text-shadow",
+    colorProp: "--tw-text-shadow-color",
+    alphaProp: "--tw-text-shadow-alpha",
+    ns: "text-shadow",
+    none: "none",
+    properties: TEXT_SHADOW_PROPS,
+  }),
 
   // --- scrollbar ---
   "scrollbar-thumb": scrollbarColor("--tw-scrollbar-thumb"),
   "scrollbar-track": scrollbarColor("--tw-scrollbar-track"),
 
   // --- inset ring / inset shadow ---
-  "inset-ring": (value, ctx) => {
-    if (ctx.negative) return null;
-    const width =
-      value === null
-        ? "1px"
-        : /^\d+$/.test(value)
-          ? `${value}px`
-          : isArbitrary(value) && !looksLikeColor(arbitraryValue(value))
-            ? arbitraryValue(value)
-            : null;
-    if (width !== null && !ctx.modifier)
-      return out(
-        [
-          d(
-            "--tw-inset-ring-shadow",
-            `inset 0 0 0 ${width} var(--tw-inset-ring-color, currentcolor)`,
-          ),
-          d("box-shadow", BOX_SHADOW_VALUE),
-        ],
-        SHADOW_PROPS,
-      );
-    if (value === null) return null;
-    const c = resolveColor(value, ctx);
-    if (c === null) return null;
-    const cm = withOpacity(c, ctx.modifier);
-    if (cm === null) return null;
-    return out([d("--tw-inset-ring-color", cm)]);
-  },
-  "inset-shadow": (value, ctx) => {
-    if (ctx.negative) return null;
-    const boxShadow = d("box-shadow", BOX_SHADOW_VALUE);
-    if (value === "none")
-      return ctx.modifier
-        ? null
-        : out(
-            [d("--tw-inset-shadow", "inset 0 0 #0000"), boxShadow],
-            SHADOW_PROPS,
-          );
-    if (value === "initial")
-      return ctx.modifier
-        ? null
-        : out([d("--tw-inset-shadow-color", "initial")], SHADOW_PROPS);
-    const themeKey =
-      value === null ? "--inset-shadow" : `--inset-shadow-${value}`;
-    const raw = ctx.theme.get(themeKey);
-    if (raw !== undefined) {
-      const alpha = shadowAlpha(ctx);
-      if (alpha === undefined) return null;
-      const folded = foldShadowColors(
-        raw,
-        "--tw-inset-shadow-color",
-        alpha ?? undefined,
-      );
-      const nodes = alpha ? [d("--tw-inset-shadow-alpha", alpha)] : [];
-      return out(
-        [...nodes, d("--tw-inset-shadow", folded), boxShadow],
-        SHADOW_PROPS,
-      );
-    }
-    if (value !== null && isArbitrary(value)) {
-      const a = arbitraryValue(value);
-      if (!looksLikeColor(a) && !a.startsWith("var(")) {
-        if (ctx.modifier) return null;
-        return out(
-          [
-            d(
-              "--tw-inset-shadow",
-              `inset ${foldShadowColors(a, "--tw-inset-shadow-color")}`,
-            ),
-            boxShadow,
-          ],
-          SHADOW_PROPS,
-        );
-      }
-    }
-    if (value === null) return null;
-    const cm = shadowColorValue(value, ctx, "--tw-inset-shadow-alpha");
-    if (cm === null) return null;
-    return out([d("--tw-inset-shadow-color", cm)], SHADOW_PROPS);
-  },
+  "inset-ring": ringUtil(
+    "--tw-inset-ring-shadow",
+    "--tw-inset-ring-color",
+    (w) => `inset 0 0 0 ${w} var(--tw-inset-ring-color, currentcolor)`,
+  ),
+  "inset-shadow": shadowFamily({
+    prop: "--tw-inset-shadow",
+    ns: "inset-shadow",
+    none: "inset 0 0 #0000",
+    // an arbitrary inset shadow gains the `inset` keyword; a themed one
+    // already carries it in the theme value
+    arbPrefix: "inset ",
+    tail: [d("box-shadow", BOX_SHADOW_VALUE)],
+    properties: SHADOW_PROPS,
+  }),
 
   // --- misc ---
-  indent: spacingUtil(["text-indent"], { negative: true }),
-  zoom: (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    if (/^\d+(\.\d+)?$/.test(value)) return out([d("zoom", `${value}%`)]);
-    if (isArbitrary(value)) return out([d("zoom", arbitraryValue(value))]);
-    return null;
-  },
-  tab: (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    if (/^\d+$/.test(value)) return out([d("tab-size", value)]);
-    if (isArbitrary(value)) return out([d("tab-size", arbitraryValue(value))]);
-    return null;
-  },
-  "font-stretch": (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    if (/^\d+(\.\d+)?%$/.test(value)) return out([d("font-stretch", value)]);
-    if (isArbitrary(value))
-      return out([d("font-stretch", arbitraryValue(value))]);
-    return null;
-  },
-  basis: (value, ctx) => {
-    if (value === null || ctx.negative) return null;
-    const joined = rejoinFraction(value, ctx);
-    if (joined === undefined) return null;
-    const v = joined!;
-    if (v === "full") return out([d("flex-basis", "100%")]);
-    if (v === "auto") return out([d("flex-basis", "auto")]);
-    if (v === "px") return out([d("flex-basis", "1px")]);
-    if (ctx.theme.has(`--container-${v}`))
-      return out([d("flex-basis", `var(--container-${v})`)]);
-    if (fraction(v)) return out([d("flex-basis", fraction(v)!)]);
-    if (isArbitrary(v)) return out([d("flex-basis", arbitraryValue(v))]);
-    if (customProp(v)) return out([d("flex-basis", customProp(v)!)]);
-    const n = bareSpacing(v);
-    if (n === null) return null;
-    return out([d("flex-basis", spacingCalc(n, false))]);
-  },
+  zoom: kindUtil(["zoom"], ["%v", "a"]),
+  tab: kindUtil(["tab-size"], ["i", "a"]),
+  "font-stretch": kindUtil(["font-stretch"], ["P", "a"]),
+  basis: kindUtil(
+    ["flex-basis"],
+    [
+      "K:full=100%",
+      "K:auto=auto",
+      "K:px=1px",
+      "T:container",
+      "f",
+      "a",
+      "c",
+      "#",
+    ],
+    { fraction: true },
+  ),
   order: intUtil("order", { first: "-9999", last: "9999", none: "0" }),
   "row-start": intUtil("grid-row-start", { auto: "auto" }),
   "row-end": intUtil("grid-row-end", { auto: "auto" }),
@@ -1800,68 +1472,37 @@ const COMPOSED: Record<string, Handler> = {
   "max-block": logicalSize("max-block-size", { none: true }),
   "max-inline": logicalSize("max-inline-size", { none: true }),
 
-  columns: (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    if (/^\d+$/.test(value)) return out([d("columns", value)]);
-    if (value === "auto") return out([d("columns", "auto")]);
-    if (ctx.theme.has(`--container-${value}`))
-      return out([d("columns", `var(--container-${value})`)]);
-    if (isArbitrary(value)) return out([d("columns", arbitraryValue(value))]);
-    if (customProp(value)) return out([d("columns", customProp(value)!)]);
-    return null;
-  },
+  columns: kindUtil(["columns"], ["i", "K:auto=auto", "T:container", "a", "c"]),
 
-  perspective: (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    if (value === "none") return out([d("perspective", "none")]);
-    if (ctx.theme.has(`--perspective-${value}`))
-      return out([d("perspective", `var(--perspective-${value})`)]);
-    if (isArbitrary(value))
-      return out([d("perspective", arbitraryValue(value))]);
-    if (customProp(value)) return out([d("perspective", customProp(value)!)]);
-    return null;
-  },
+  perspective: kindUtil(
+    ["perspective"],
+    ["K:none=none", "T:perspective", "a", "c"],
+  ),
 
   "border-spacing": borderSpacing(["x", "y"]),
   "border-spacing-x": borderSpacing(["x"]),
   "border-spacing-y": borderSpacing(["y"]),
 
+  // line-clamp sets a four-declaration block whose first three flip wholesale
+  // between the `none` reset and any real clamp count
   "line-clamp": (value, ctx) => {
     if (value === null || ctx.negative || ctx.modifier) return null;
-    if (value === "none")
-      return out([
-        d("overflow", "visible"),
-        d("display", "block"),
-        d("-webkit-box-orient", "horizontal"),
-        d("-webkit-line-clamp", "unset"),
-      ]);
-    let n: string | null = null;
-    if (/^\d+$/.test(value)) n = value;
-    else if (isArbitrary(value)) n = arbitraryValue(value);
-    else if (customProp(value)) n = customProp(value);
-    if (n === null) return null;
+    const n = value === "none" ? null : runKinds(["i", "a", "c"], value, ctx);
+    if (n === null && value !== "none") return null;
+    const reset = n === null;
     return out([
-      d("overflow", "hidden"),
-      d("display", "-webkit-box"),
-      d("-webkit-box-orient", "vertical"),
-      d("-webkit-line-clamp", n),
+      d("overflow", reset ? "visible" : "hidden"),
+      d("display", reset ? "block" : "-webkit-box"),
+      d("-webkit-box-orient", reset ? "horizontal" : "vertical"),
+      d("-webkit-line-clamp", reset ? "unset" : n),
     ]);
   },
 
-  aspect: (value, ctx) => {
-    if (value === null || ctx.negative) return null;
-    const joined = rejoinFraction(value, ctx);
-    if (joined === undefined) return null;
-    const v = joined!;
-    if (v === "auto") return out([d("aspect-ratio", "auto")]);
-    if (v === "square") return out([d("aspect-ratio", "1 / 1")]);
-    if (ctx.theme.has(`--aspect-${v}`))
-      return out([d("aspect-ratio", `var(--aspect-${v})`)]);
-    if (/^\d+\/\d+$/.test(v)) return out([d("aspect-ratio", v)]);
-    if (isArbitrary(v)) return out([d("aspect-ratio", arbitraryValue(v))]);
-    if (customProp(v)) return out([d("aspect-ratio", customProp(v)!)]);
-    return null;
-  },
+  aspect: kindUtil(
+    ["aspect-ratio"],
+    ["K:auto=auto", "K:square=1 / 1", "T:aspect", "r", "a", "c"],
+    { fraction: true },
+  ),
 
   // gradient background images
   "bg-linear": bgGradient("linear"),
@@ -1870,75 +1511,48 @@ const COMPOSED: Record<string, Handler> = {
 };
 
 function intUtil(prop: string, named: Record<string, string> = {}): Handler {
-  return (value, ctx) => {
-    if (value === null || ctx.modifier) return null;
-    if (value in named)
-      return ctx.negative ? null : out([d(prop, named[value]!)]);
-    if (/^\d+$/.test(value))
-      return out([d(prop, ctx.negative ? `calc(${value} * -1)` : value)]);
-    if (isArbitrary(value) && !ctx.negative)
-      return out([d(prop, arbitraryValue(value))]);
-    if (customProp(value) && !ctx.negative)
-      return out([d(prop, customProp(value)!)]);
-    return null;
-  };
+  return kindUtil(
+    [prop],
+    [...Object.entries(named).map(([k, v]) => `K:${k}=${v}`), "i", "a!", "c!"],
+    { negative: true },
+  );
 }
 
 function logicalSize(prop: string, opts: { none?: boolean } = {}): Handler {
   const vp = prop.includes("inline") ? "vw" : "vh";
-  return (rawValue, ctx) => {
-    if (rawValue === null || ctx.negative) return null;
-    const joined = rejoinFraction(rawValue, ctx);
-    if (joined === undefined) return null;
-    const value = joined!;
-    let css: string | null = null;
-    if (value === "px") css = "1px";
-    else if (value === "lh") css = "1lh";
-    else if (value === "none" && opts.none) css = "none";
-    else if (value === "screen") css = `100${vp}`;
-    else if (/^[dls]v[wh]$/.test(value)) css = `100${value}`;
-    else if (value in SIZE_NAMED) css = SIZE_NAMED[value]!;
-    else if (ctx.theme.has(`--container-${value}`))
-      css = `var(--container-${value})`;
-    else if (fraction(value)) css = fraction(value);
-    else if (isArbitrary(value)) css = arbitraryValue(value);
-    else if (customProp(value)) css = customProp(value);
-    else {
-      const n = bareSpacing(value);
-      if (n === null) return null;
-      css = spacingCalc(n, false);
-    }
-    return out([d(prop, css!)]);
-  };
+  return kindUtil(
+    [prop],
+    [
+      "K:px=1px",
+      "K:lh=1lh",
+      ...(opts.none ? ["K:none=none"] : []),
+      `K:screen=100${vp}`,
+      "V", // dvw/lvh/svh… → 100<unit>
+      ...SIZE_NAMED_KINDS,
+      "T:container",
+      "f",
+      "a",
+      "c",
+      "#",
+    ],
+    { fraction: true },
+  );
 }
 
-const BORDER_SPACING_PROPS = [
-  P("--tw-border-spacing-x", "0", "<length>"),
-  P("--tw-border-spacing-y", "0", "<length>"),
-];
 function borderSpacing(axes: ("x" | "y")[]): Handler {
-  return (value, ctx) => {
-    if (value === null || ctx.negative || ctx.modifier) return null;
-    let v: string | null = null;
-    if (value === "px") v = "1px";
-    else if (isArbitrary(value)) v = arbitraryValue(value);
-    else if (customProp(value)) v = customProp(value);
-    else {
-      const n = bareSpacing(value);
-      if (n === null) return null;
-      v = spacingCalc(n, false);
-    }
-    return out(
-      [
-        ...axes.map((a) => d(`--tw-border-spacing-${a}`, v!)),
+  return kindUtil(
+    axes.map((a) => `--tw-border-spacing-${a}`),
+    ["K:px=1px", "a", "c", "#"],
+    {
+      tail: [
         d(
           "border-spacing",
           "var(--tw-border-spacing-x) var(--tw-border-spacing-y)",
         ),
       ],
-      BORDER_SPACING_PROPS,
-    );
-  };
+      properties: BORDER_SPACING_PROPS,
+    },
+  );
 }
 
 /** bg-linear-45, bg-linear-to-r, bg-conic-0, bg-radial-[at_50%_75%] */
@@ -1971,67 +1585,40 @@ function bgGradient(shape: "linear" | "conic" | "radial"): Handler {
         "background-image",
         `${shape}-gradient(var(--tw-gradient-stops${fallback ? `,${fallback}` : ""}))`,
       );
-    if (shape === "linear") {
-      if (value === null) return null;
-      let pos: string | null = null;
-      if (value.startsWith("to-") && SIDES[value.slice(3)] && !ctx.negative)
-        pos = `to ${SIDES[value.slice(3)]}`;
-      else if (/^\d+(\.\d+)?$/.test(value))
-        pos = ctx.negative ? `calc(${value}deg * -1)` : `${value}deg`;
-      if (pos !== null)
-        return out([
-          d("--tw-gradient-position", pos),
-          {
-            at: "@supports (background-image: linear-gradient(in lab, red, red))",
-            nodes: [d("--tw-gradient-position", `${pos} in ${interp}`)],
-          },
-          image(),
-        ]);
-      if (isArbitrary(value) && !ctx.negative) {
-        const a = arbitraryValue(value);
-        return out([d("--tw-gradient-position", a), image(a)]);
-      }
-      return null;
-    }
-    if (shape === "conic") {
-      if (value === null) return null;
-      if (/^\d+(\.\d+)?$/.test(value)) {
-        const deg = ctx.negative ? `calc(${value}deg * -1)` : `${value}deg`;
-        return out([
-          d("--tw-gradient-position", `from ${deg} in ${interp}`),
-          image(),
-        ]);
-      }
-      if (isArbitrary(value) && !ctx.negative) {
-        const a = arbitraryValue(value);
-        return out([d("--tw-gradient-position", a), image(a)]);
-      }
-      return null;
-    }
-    // radial
-    if (ctx.negative) return null;
-    if (value === null)
-      return out([d("--tw-gradient-position", `in ${interp}`), image()]);
-    if (isArbitrary(value)) {
+    // an arbitrary position is written verbatim and also becomes the
+    // background-image fallback — the same for all three shapes
+    if (value !== null && isArbitrary(value) && !ctx.negative) {
       const a = arbitraryValue(value);
       return out([d("--tw-gradient-position", a), image(a)]);
     }
-    return null;
+    if (shape === "radial")
+      return value === null && !ctx.negative
+        ? out([d("--tw-gradient-position", `in ${interp}`), image()])
+        : null;
+    if (value === null) return null;
+    // linear takes a named side or an angle; conic takes an angle only
+    const deg = runKinds(ANGLE_KINDS, value, ctx);
+    if (shape === "conic")
+      return deg === null
+        ? null
+        : out([
+            d("--tw-gradient-position", `from ${deg} in ${interp}`),
+            image(),
+          ]);
+    const pos =
+      !ctx.negative && value.startsWith("to-") && SIDES[value.slice(3)]
+        ? `to ${SIDES[value.slice(3)]}`
+        : deg;
+    if (pos === null) return null;
+    return out([
+      d("--tw-gradient-position", pos),
+      {
+        at: "@supports (background-image: linear-gradient(in lab, red, red))",
+        nodes: [d("--tw-gradient-position", `${pos} in ${interp}`)],
+      },
+      image(),
+    ]);
   };
-}
-
-function translateValue(v: string, ctx: Ctx): string | null {
-  if (v === "px") return ctx.negative ? "-1px" : "1px";
-  if (v === "full") return ctx.negative ? "-100%" : "100%";
-  if (fraction(v))
-    return ctx.negative ? `calc(${fraction(v)} * -1)` : fraction(v)!;
-  if (isArbitrary(v))
-    return ctx.negative ? `calc(${arbitraryValue(v)} * -1)` : arbitraryValue(v);
-  if (customProp(v))
-    return ctx.negative ? `calc(${customProp(v)} * -1)` : customProp(v)!;
-  const n = bareSpacing(v);
-  if (n === null) return null;
-  return spacingCalc(n, ctx.negative);
 }
 
 function gradientStop(kind: "from" | "via" | "to"): Handler {
@@ -2102,35 +1689,25 @@ function scrollbarColor(twVar: string): Handler {
 
 // ---------- masks ----------
 
-const MASK_BASE_PROPS = [
-  P("--tw-mask-linear", "linear-gradient(#fff, #fff)"),
-  P("--tw-mask-radial", "linear-gradient(#fff, #fff)"),
-  P("--tw-mask-conic", "linear-gradient(#fff, #fff)"),
-];
-const MASK_SIDE_PROPS = [
-  P("--tw-mask-left", "linear-gradient(#fff, #fff)"),
-  P("--tw-mask-right", "linear-gradient(#fff, #fff)"),
-  P("--tw-mask-bottom", "linear-gradient(#fff, #fff)"),
-  P("--tw-mask-top", "linear-gradient(#fff, #fff)"),
-];
-let MASK_LINEAR_ANGLE_PROPS: PropDef[];
-let MASK_CONIC_ANGLE_PROPS: PropDef[];
+// every mask slot's @property initial-value is the same opaque gradient
+const MASK_WHITE = "linear-gradient(#fff, #fff)";
+const maskSlotProps = (names: string) =>
+  names.split(" ").map((n) => P(`mask-${n}`, MASK_WHITE));
+const MASK_BASE_PROPS = maskSlotProps("linear radial conic");
+const MASK_SIDE_PROPS = maskSlotProps("left right bottom top");
 const maskEdgeProps = (side: string) => [
-  P(`--tw-mask-${side}-from-position`, "0%"),
-  P(`--tw-mask-${side}-to-position`, "100%"),
-  P(`--tw-mask-${side}-from-color`, "black"),
-  P(`--tw-mask-${side}-to-color`, "transparent"),
+  P(`mask-${side}-from-position`, "0%"),
+  P(`mask-${side}-to-position`, "100%"),
+  P(`mask-${side}-from-color`, "black"),
+  P(`mask-${side}-to-color`, "transparent"),
 ];
-MASK_LINEAR_ANGLE_PROPS = [
+const maskAngleProps = (shape: string) => [
   ...MASK_BASE_PROPS,
-  P("--tw-mask-linear-position", "0deg"),
-  ...maskEdgeProps("linear"),
+  P(`mask-${shape}-position`, "0deg"),
+  ...maskEdgeProps(shape),
 ];
-MASK_CONIC_ANGLE_PROPS = [
-  ...MASK_BASE_PROPS,
-  P("--tw-mask-conic-position", "0deg"),
-  ...maskEdgeProps("conic"),
-];
+const MASK_LINEAR_ANGLE_PROPS = maskAngleProps("linear");
+const MASK_CONIC_ANGLE_PROPS = maskAngleProps("conic");
 
 const MASK_HEAD = [
   d(
@@ -2208,41 +1785,32 @@ function maskSideUtil(sides: string[], stop: "from" | "to"): Handler {
   };
 }
 
-const MASK_LINEAR_STOPS =
-  "var(--tw-mask-linear-position), var(--tw-mask-linear-from-color) var(--tw-mask-linear-from-position), var(--tw-mask-linear-to-color) var(--tw-mask-linear-to-position)";
-const MASK_RADIAL_STOPS =
-  "var(--tw-mask-radial-shape) var(--tw-mask-radial-size) at var(--tw-mask-radial-position), var(--tw-mask-radial-from-color) var(--tw-mask-radial-from-position), var(--tw-mask-radial-to-color) var(--tw-mask-radial-to-position)";
-const MASK_CONIC_STOPS =
-  "from var(--tw-mask-conic-position), var(--tw-mask-conic-from-color) var(--tw-mask-conic-from-position), var(--tw-mask-conic-to-color) var(--tw-mask-conic-to-position)";
-
 function maskShapeUtil(
   shape: "linear" | "radial" | "conic",
   stop: "from" | "to",
 ): Handler {
   const stopsVar = `--tw-mask-${shape}-stops`;
-  const stopsValue =
+  // every shape ends its stop list the same way; only the head differs —
+  // an angle for linear, a `from` angle for conic, shape/size/position for
+  // radial (whose extra slots also add three @property entries).
+  const v = (suffix: string) => `var(--tw-mask-${shape}-${suffix})`;
+  const head =
     shape === "linear"
-      ? MASK_LINEAR_STOPS
-      : shape === "radial"
-        ? MASK_RADIAL_STOPS
-        : MASK_CONIC_STOPS;
-  const gradientFn =
-    shape === "linear"
-      ? "linear-gradient"
-      : shape === "radial"
-        ? "radial-gradient"
-        : "conic-gradient";
+      ? v("position")
+      : shape === "conic"
+        ? `from ${v("position")}`
+        : `${v("shape")} ${v("size")} at ${v("position")}`;
+  const stopsValue = `${head}, ${v("from-color")} ${v("from-position")}, ${v("to-color")} ${v("to-position")}`;
   const shapeProps =
-    shape === "linear"
-      ? [P("--tw-mask-linear-position", "0deg"), ...maskEdgeProps("linear")]
-      : shape === "radial"
-        ? [
-            ...maskEdgeProps("radial"),
-            P("--tw-mask-radial-shape", "ellipse"),
-            P("--tw-mask-radial-size", "farthest-corner"),
-            P("--tw-mask-radial-position", "center"),
-          ]
-        : [P("--tw-mask-conic-position", "0deg"), ...maskEdgeProps("conic")];
+    shape === "radial"
+      ? [
+          ...maskEdgeProps("radial"),
+          P("mask-radial-shape", "ellipse"),
+          P("mask-radial-size", "farthest-corner"),
+          P("mask-radial-position", "center"),
+        ]
+      : [P(`mask-${shape}-position`, "0deg"), ...maskEdgeProps(shape)];
+  const gradientFn = `${shape}-gradient`;
   const allProps = [...MASK_BASE_PROPS, ...shapeProps];
   return (value, ctx) => {
     if (value === null || ctx.negative) return null;
@@ -2304,144 +1872,169 @@ COMPOSED["mask-none"] = (value, ctx) =>
     ? out([d("mask-image", "none")])
     : null;
 
-// rotate-x/y/z and skew/skew-x/skew-y and scale-x/y/z axis handlers
+// rotate-x/y/z, skew/skew-x/skew-y, scale-x/y/z — all the same shape: an
+// angle (or percentage) that is negatable only in its bare-numeric form, piped
+// into one custom property plus the family's shared composite declaration.
+// The percentage filters: identical but for the CSS function name, the slot
+// they write, and whether a bare root means 100%. `filter-*` and
+// `backdrop-filter-*` differ only in the prefix and the trailing declarations.
+for (const spec of "brightness contrast saturate grayscale! invert! sepia! opacity=".split(
+  " ",
+)) {
+  // trailing `!` → bare root defaults to 100%; trailing `=` → backdrop-only
+  const bare = spec.endsWith("!") ? "100%" : undefined;
+  const backdropOnly = spec.endsWith("=");
+  const fn = spec.replace(/[!=]$/, "");
+  if (!backdropOnly)
+    COMPOSED[fn] = pctFilter(
+      fn,
+      `--tw-${fn}`,
+      FILTER_PROPS,
+      () => [filterDecl()],
+      bare,
+    );
+  COMPOSED[`backdrop-${fn}`] = pctFilter(
+    fn,
+    `--tw-backdrop-${fn}`,
+    BACKDROP_PROPS,
+    backdropDecls,
+    bare,
+  );
+}
+
+const TRANSFORM_TAIL = [d("transform", TRANSFORM_VALUE)];
 for (const axis of ["x", "y", "z"] as const) {
-  COMPOSED[`rotate-${axis}`] = (value, ctx) => {
-    if (value === null || ctx.modifier) return null;
-    let arg: string | null = null;
-    if (/^\d+(\.\d+)?$/.test(value))
-      arg = ctx.negative ? `calc(${value}deg * -1)` : `${value}deg`;
-    else if (isArbitrary(value) && !ctx.negative) arg = arbitraryValue(value);
-    if (arg === null) return null;
-    const fn = `rotate${axis.toUpperCase()}`;
-    return out(
-      [
-        d(`--tw-rotate-${axis}`, `${fn}(${arg})`),
-        d("transform", TRANSFORM_VALUE),
-      ],
-      TRANSFORM_PROPS,
-    );
-  };
-  COMPOSED[`scale-${axis}`] = (value, ctx) => {
-    if (value === null || ctx.modifier) return null;
-    let v: string | null = null;
-    if (/^\d+(\.\d+)?$/.test(value))
-      v = ctx.negative ? `calc(${value}% * -1)` : `${value}%`;
-    else if (isArbitrary(value) && !ctx.negative) v = arbitraryValue(value);
-    if (v === null) return null;
-    const scaleDecl =
-      axis === "z"
-        ? "var(--tw-scale-x) var(--tw-scale-y) var(--tw-scale-z)"
-        : "var(--tw-scale-x) var(--tw-scale-y)";
-    return out(
-      [d(`--tw-scale-${axis}`, v), d("scale", scaleDecl)],
-      SCALE_PROPS,
-    );
-  };
+  const up = axis.toUpperCase();
+  COMPOSED[`rotate-${axis}`] = kindUtil([`--tw-rotate-${axis}`], ANGLE_KINDS, {
+    negative: true,
+    fn: `rotate${up}`,
+    tail: TRANSFORM_TAIL,
+    properties: TRANSFORM_PROPS,
+  });
+  COMPOSED[`scale-${axis}`] = kindUtil([`--tw-scale-${axis}`], ["%v", "a!"], {
+    negative: true,
+    tail: [
+      d(
+        "scale",
+        axis === "z"
+          ? "var(--tw-scale-x) var(--tw-scale-y) var(--tw-scale-z)"
+          : "var(--tw-scale-x) var(--tw-scale-y)",
+      ),
+    ],
+    properties: SCALE_PROPS,
+  });
+  if (axis !== "z")
+    COMPOSED[`skew-${axis}`] = kindUtil([`--tw-skew-${axis}`], ANGLE_KINDS, {
+      negative: true,
+      fn: `skew${up}`,
+      tail: TRANSFORM_TAIL,
+      properties: TRANSFORM_PROPS,
+    });
 }
-for (const axis of ["x", "y"] as const) {
-  COMPOSED[`skew-${axis}`] = (value, ctx) => {
-    if (value === null || ctx.modifier) return null;
-    let arg: string | null = null;
-    if (/^\d+(\.\d+)?$/.test(value))
-      arg = ctx.negative ? `calc(${value}deg * -1)` : `${value}deg`;
-    else if (isArbitrary(value) && !ctx.negative) arg = arbitraryValue(value);
-    if (arg === null) return null;
-    const fn = `skew${axis.toUpperCase()}`;
-    return out(
-      [
-        d(`--tw-skew-${axis}`, `${fn}(${arg})`),
-        d("transform", TRANSFORM_VALUE),
-      ],
-      TRANSFORM_PROPS,
-    );
-  };
-}
+// bare `skew-6` sets both axes, each with its own skewX/skewY wrapper — two
+// different wrappers means it can't use `fn`, so it stays explicit.
 COMPOSED["skew"] = (value, ctx) => {
   if (value === null || ctx.modifier) return null;
-  let arg: string | null = null;
-  if (/^\d+(\.\d+)?$/.test(value))
-    arg = ctx.negative ? `calc(${value}deg * -1)` : `${value}deg`;
-  else if (isArbitrary(value) && !ctx.negative) arg = arbitraryValue(value);
+  const arg = runKinds(ANGLE_KINDS, value, ctx);
   if (arg === null) return null;
   return out(
     [
       d("--tw-skew-x", `skewX(${arg})`),
       d("--tw-skew-y", `skewY(${arg})`),
-      d("transform", TRANSFORM_VALUE),
+      ...TRANSFORM_TAIL,
     ],
     TRANSFORM_PROPS,
   );
 };
 
-// logical + scroll spacing families
+// ---------- spacing families, generated ----------
+// The padding/margin/scroll-* families are pure suffix algebra: a root letter
+// picks the CSS property, a suffix letter picks the box side. Expanding them
+// from this table instead of ~60 literal call sites is where most of the
+// spacing bytes went. Suffix key → property suffix:
+const SIDE_SUFFIX: Record<string, string> = {
+  "": "",
+  x: "-inline",
+  y: "-block",
+  s: "-inline-start",
+  e: "-inline-end",
+  t: "-top",
+  r: "-right",
+  b: "-bottom",
+  l: "-left",
+  bs: "-block-start",
+  be: "-block-end",
+};
+const SIDES_ALL = ["", "x", "y", "s", "e", "t", "r", "b", "l", "bs", "be"];
+// root prefix → [property base, spacingUtil opts, allowed side keys]
+const INSET_OPTS = {
+  auto: true,
+  negative: true,
+  fraction: true,
+  full: true,
+} as const;
+for (const [prefix, prop, opts, sides] of [
+  ["p", "padding", {}, SIDES_ALL],
+  ["m", "margin", { auto: true, negative: true }, SIDES_ALL],
+  ["scroll-p", "scroll-padding", {}, SIDES_ALL],
+  ["scroll-m", "scroll-margin", { negative: true }, SIDES_ALL],
+  ["inset", "inset", INSET_OPTS, ["", "x", "y", "s", "e", "bs", "be"]],
+] as const) {
+  // `p`+`x` → `px`, but `inset`+`x` → `inset-x` (multi-letter roots hyphenate)
+  const sep = prefix === "inset" ? "-" : "";
+  for (const side of sides)
+    COMPOSED[side ? prefix + sep + side : prefix] = spacingUtil(
+      [prop + SIDE_SUFFIX[side]!],
+      opts,
+    );
+}
+// border-* sides and rounded-* corners: two more suffix tables. The border
+// suffix names a CSS box side; the rounded suffix names one or two corners.
+for (const [suffix, side] of [
+  ["", ""],
+  ["-t", "top"],
+  ["-r", "right"],
+  ["-b", "bottom"],
+  ["-l", "left"],
+  ["-x", "inline"],
+  ["-y", "block"],
+  ["-s", "inline-start"],
+  ["-e", "inline-end"],
+  ["-bs", "block-start"],
+  ["-be", "block-end"],
+] as const)
+  COMPOSED[`border${suffix}`] = borderUtil(side);
+
+for (const [suffix, corners] of [
+  ["", ""],
+  ["-t", "top-left top-right"],
+  ["-r", "top-right bottom-right"],
+  ["-b", "bottom-right bottom-left"],
+  ["-l", "top-left bottom-left"],
+  ["-tl", "top-left"],
+  ["-tr", "top-right"],
+  ["-br", "bottom-right"],
+  ["-bl", "bottom-left"],
+  ["-s", "start-start end-start"],
+  ["-e", "start-end end-end"],
+  ["-ss", "start-start"],
+  ["-se", "start-end"],
+  ["-es", "end-start"],
+  ["-ee", "end-end"],
+] as const)
+  COMPOSED[`rounded${suffix}`] = roundedUtil(corners.split(" "));
+
 Object.assign(COMPOSED, {
-  mbs: spacingUtil(["margin-block-start"], { auto: true, negative: true }),
-  mbe: spacingUtil(["margin-block-end"], { auto: true, negative: true }),
-  pbs: spacingUtil(["padding-block-start"]),
-  pbe: spacingUtil(["padding-block-end"]),
-  "inset-s": spacingUtil(["inset-inline-start"], {
-    auto: true,
-    negative: true,
-    fraction: true,
-    full: true,
-  }),
-  "inset-e": spacingUtil(["inset-inline-end"], {
-    auto: true,
-    negative: true,
-    fraction: true,
-    full: true,
-  }),
-  "inset-bs": spacingUtil(["inset-block-start"], {
-    auto: true,
-    negative: true,
-    fraction: true,
-    full: true,
-  }),
-  "inset-be": spacingUtil(["inset-block-end"], {
-    auto: true,
-    negative: true,
-    fraction: true,
-    full: true,
-  }),
-  start: spacingUtil(["inset-inline-start"], {
-    auto: true,
-    negative: true,
-    fraction: true,
-    full: true,
-  }),
-  end: spacingUtil(["inset-inline-end"], {
-    auto: true,
-    negative: true,
-    fraction: true,
-    full: true,
-  }),
-  "scroll-m": spacingUtil(["scroll-margin"], { negative: true }),
-  "scroll-mx": spacingUtil(["scroll-margin-inline"], { negative: true }),
-  "scroll-my": spacingUtil(["scroll-margin-block"], { negative: true }),
-  "scroll-ms": spacingUtil(["scroll-margin-inline-start"], { negative: true }),
-  "scroll-me": spacingUtil(["scroll-margin-inline-end"], { negative: true }),
-  "scroll-mt": spacingUtil(["scroll-margin-top"], { negative: true }),
-  "scroll-mr": spacingUtil(["scroll-margin-right"], { negative: true }),
-  "scroll-mb": spacingUtil(["scroll-margin-bottom"], { negative: true }),
-  "scroll-ml": spacingUtil(["scroll-margin-left"], { negative: true }),
-  "scroll-mbs": spacingUtil(["scroll-margin-block-start"], {
-    negative: true,
-  }),
-  "scroll-mbe": spacingUtil(["scroll-margin-block-end"], { negative: true }),
-  "scroll-p": spacingUtil(["scroll-padding"]),
-  "scroll-px": spacingUtil(["scroll-padding-inline"]),
-  "scroll-py": spacingUtil(["scroll-padding-block"]),
-  "scroll-ps": spacingUtil(["scroll-padding-inline-start"]),
-  "scroll-pe": spacingUtil(["scroll-padding-inline-end"]),
-  "scroll-pt": spacingUtil(["scroll-padding-top"]),
-  "scroll-pr": spacingUtil(["scroll-padding-right"]),
-  "scroll-pb": spacingUtil(["scroll-padding-bottom"]),
-  "scroll-pl": spacingUtil(["scroll-padding-left"]),
-  "scroll-pbs": spacingUtil(["scroll-padding-block-start"]),
-  "scroll-pbe": spacingUtil(["scroll-padding-block-end"]),
-  "border-bs": borderUtil("block-start"),
-  "border-be": borderUtil("block-end"),
+  gap: spacingUtil(["gap"]),
+  "gap-x": spacingUtil(["column-gap"]),
+  "gap-y": spacingUtil(["row-gap"]),
+  top: spacingUtil(["top"], INSET_OPTS),
+  right: spacingUtil(["right"], INSET_OPTS),
+  bottom: spacingUtil(["bottom"], INSET_OPTS),
+  left: spacingUtil(["left"], INSET_OPTS),
+  start: spacingUtil(["inset-inline-start"], INSET_OPTS),
+  end: spacingUtil(["inset-inline-end"], INSET_OPTS),
+  indent: spacingUtil(["text-indent"], { negative: true }),
 });
 
 Object.assign(F, COMPOSED);
@@ -2463,17 +2056,7 @@ const STATIC_SPECIAL: Record<string, (ctx: Ctx) => UtilityOutput> = {
       },
     ],
   }),
-  "tabular-nums": () => numericUtil("--tw-numeric-spacing", "tabular-nums"),
-  ordinal: () => numericUtil("--tw-ordinal", "ordinal"),
-  "slashed-zero": () => numericUtil("--tw-slashed-zero", "slashed-zero"),
-  "lining-nums": () => numericUtil("--tw-numeric-figure", "lining-nums"),
-  "oldstyle-nums": () => numericUtil("--tw-numeric-figure", "oldstyle-nums"),
-  "proportional-nums": () =>
-    numericUtil("--tw-numeric-spacing", "proportional-nums"),
-  "diagonal-fractions": () =>
-    numericUtil("--tw-numeric-fraction", "diagonal-fractions"),
-  "stacked-fractions": () =>
-    numericUtil("--tw-numeric-fraction", "stacked-fractions"),
+  ...numericStatics(),
   "normal-nums": () => out([d("font-variant-numeric", "normal")]),
   "content-none": () => out([d("--tw-content", "none"), d("content", "none")]),
   container: (ctx) => {
@@ -2509,8 +2092,30 @@ const STATIC_SPECIAL: Record<string, (ctx: Ctx) => UtilityOutput> = {
   ...containStatics(),
 };
 
+/**
+ * The `font-variant-numeric` utilities. Each writes its own `--tw-*` slot; the
+ * shorthand then concatenates all five slots, so they compose rather than
+ * overwrite. `slot=name` where the utility name differs from its CSS value.
+ */
+function numericStatics() {
+  const entries: Record<string, () => UtilityOutput> = {};
+  for (const group of [
+    "ordinal",
+    "slashed-zero",
+    "numeric-figure=lining-nums oldstyle-nums",
+    "numeric-spacing=tabular-nums proportional-nums",
+    "numeric-fraction=diagonal-fractions stacked-fractions",
+  ]) {
+    const eq = group.indexOf("=");
+    const slot = eq === -1 ? group : group.slice(0, eq);
+    for (const name of (eq === -1 ? group : group.slice(eq + 1)).split(" "))
+      entries[name] = () => numericUtil(`--tw-${slot}`, name);
+  }
+  return entries;
+}
+
 function touchStatics() {
-  const TOUCH_PROPS = [P("--tw-pan-x"), P("--tw-pan-y"), P("--tw-pinch-zoom")];
+  const TOUCH_PROPS = [P("pan-x"), P("pan-y"), P("pinch-zoom")];
   const decl = d(
     "touch-action",
     "var(--tw-pan-x,) var(--tw-pan-y,) var(--tw-pinch-zoom,)",
@@ -2531,7 +2136,7 @@ function touchStatics() {
 }
 
 function snapStatics() {
-  const SNAP_PROPS = [P("--tw-scroll-snap-strictness", "proximity")];
+  const SNAP_PROPS = [P("scroll-snap-strictness", "proximity")];
   const entries: Record<string, () => UtilityOutput> = {
     "snap-none": () => out([d("scroll-snap-type", "none")]),
     "snap-proximity": () =>
@@ -2550,7 +2155,6 @@ function snapStatics() {
 }
 
 function reverseStatics() {
-  const wrap = (sel: string) => `:where(${sel} > :not(:last-child))`;
   const entries: Record<string, () => UtilityOutput> = {};
   for (const [kind, axis] of [
     ["space", "x"],
@@ -2558,23 +2162,23 @@ function reverseStatics() {
     ["divide", "x"],
     ["divide", "y"],
   ] as const) {
-    const rev = `--tw-${kind}-${axis}-reverse`;
+    const suffix = `${kind}-${axis}-reverse`;
+    const rev = `--tw-${suffix}`;
     entries[`${kind}-${axis}-reverse`] = () => ({
       nodes: [d(rev, "1")],
-      properties: [P(rev, "0")],
-      selectorWrap: wrap,
+      properties: [P(suffix, "0")],
+      selectorWrap: siblingWrap,
     });
   }
   return entries;
 }
 
 function divideStyleStatics() {
-  const wrap = (sel: string) => `:where(${sel} > :not(:last-child))`;
   const entries: Record<string, () => UtilityOutput> = {};
   for (const style of ["solid", "dashed", "dotted", "double", "none"]) {
     entries[`divide-${style}`] = () => ({
       nodes: [d("--tw-border-style", style), d("border-style", style)],
-      selectorWrap: wrap,
+      selectorWrap: siblingWrap,
     });
   }
   return entries;
@@ -2582,10 +2186,10 @@ function divideStyleStatics() {
 
 function containStatics() {
   const CONTAIN_PROPS = [
-    P("--tw-contain-size"),
-    P("--tw-contain-layout"),
-    P("--tw-contain-paint"),
-    P("--tw-contain-style"),
+    P("contain-size"),
+    P("contain-layout"),
+    P("contain-paint"),
+    P("contain-style"),
   ];
   const decl = d(
     "contain",
