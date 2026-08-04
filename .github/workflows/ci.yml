@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - name: Conformance vs the real Tailwind compiler (+ ratchets)
+        run: pnpm test
+      - name: Full 20k-candidate sweep
+        run: FULL=1 pnpm conformance
+      - name: Size budget
+        run: pnpm size
+      - name: Bench thresholds
+        run: pnpm bench
+        continue-on-error: true # shared-runner timings are informational
+      - name: Dist build
+        run: pnpm build

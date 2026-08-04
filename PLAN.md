@@ -61,21 +61,21 @@ twilight/
   tw       — the ergonomic helper: join class names, ensure CSS, return the string. Sync.
 ```
 
-Published as **`@colight/twilight`** (the `@colight` npm org already carries `@colight/core`
+Published as **`twilightcss`** (the `@colight` npm org already carries `@colight/core`
 and friends). Sketch of the public API:
 
 ```ts
-import { createEngine } from "@colight/twilight"; // dom adapter
+import { createEngine } from "twilightcss"; // dom adapter
 const engine = createEngine({
   /* target?, theme?, prose? */
 });
 engine.ensure("flex px-4 hover:bg-red-500/50"); // synchronous; CSS in document on return
 engine.report; // unmatched tokens (dev tooling hook)
 
-import { compile } from "@colight/twilight/core"; // pure core
+import { compile } from "twilightcss/core"; // pure core
 compile(["flex", "px-4"]); // → { css, matched, unmatched }  — SSR / static extraction for free
 
-import { tw } from "@colight/twilight"; // convenience singleton, twind-style
+import { tw } from "twilightcss"; // convenience singleton, twind-style
 tw("flex px-4");
 ```
 
@@ -264,11 +264,30 @@ append-only injection only if the bench says it matters.
 > honest number for a runtime engine anyway (that vocabulary compresses well), and the full
 > stack ships at ~24 KB gz against ~200 KB for the UnoCSS stack it replaces.
 
-**M4 — Publish prep.** Publish as `@colight/twilight` (bare `twilight` and `tw4` are taken on
+**M4 — Publish prep.** Publish as `twilightcss` (bare `twilight` and `tw4` are taken on
 npm; the scoped name also keeps the colight org visible in the credit). README with the
 conformance pass-rate and size badge as the headline, examples: vanilla `<script>`, React, and an "style LLM output with no build step"
 demo. MIT + NOTICE. Decide repo home (extract vs publish from monorepo) at the end — develop in
 the monorepo for now.
+
+> **M4 prep done (2026-08-04), publish not yet cut.** README (conformance-first, measured
+> comparison table, vanilla/React/LLM-demo/custom-theme/SSR examples), LICENSE + NOTICE,
+> examples/llm-demo.html, hand-written d.ts (types/, copied into dist — the API is ~10
+> symbols and tsc cannot emit through the .ts-extension imports), `scripts/build-dist.mjs`
+> (unminified ESM bundles, assets external so one copy serves dist and the ./assets/\*
+> export). package.json: version 0.1.0, workspace exports stay on src TS while
+> `publishConfig.exports` swaps to dist at pack time; `prepublishOnly` runs test+size+build.
+> Verified end-to-end: tarball installed into a clean project, all three entries exercised,
+> consumer d.ts type-checks under strict nodenext. CI now runs the conformance ratchets,
+> size budget, and dist build. Open: the actual `npm publish` decision, and repo home
+> (currently: publish from the monorepo).
+>
+> **Repo home decided (2026-08-04): extracted.** Canonical home is
+> **github.com/colight-dev/twilightcss** (full history via git-filter-repo, own CI running
+> the ratchets + 20k sweep + size + dist build). npm name: bare **`twilightcss`**. The
+> monorepo copy remains the workspace dependency only until the first npm release, after
+> which colight switches to the published package and the monorepo copy is deleted —
+> changes land in the standalone repo from now on.
 
 ## Repo wiring (fresh-session checklist)
 

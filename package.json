@@ -1,15 +1,51 @@
 {
-  "name": "@colight/twilight",
-  "version": "0.0.0",
-  "description": "Minimal synchronous Tailwind v4 runtime engine, verified against the real compiler",
+  "name": "twilightcss",
+  "version": "0.1.0",
+  "description": "Minimal synchronous Tailwind v4 runtime engine — byte-verified against the real compiler, 16 KB gz, zero dependencies, no build step",
   "license": "MIT",
   "type": "module",
-  "private": true,
   "sideEffects": false,
+  "keywords": [
+    "tailwind",
+    "tailwindcss",
+    "tailwind-v4",
+    "runtime",
+    "css-in-js",
+    "atomic-css",
+    "no-build",
+    "twind",
+    "csp"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/colight-dev/twilightcss.git"
+  },
+  "author": "Matthew Huebert <mhuebert@gmail.com>",
+  "files": [
+    "dist",
+    "assets",
+    "!assets/index.mjs",
+    "NOTICE"
+  ],
   "exports": {
     ".": "./src/index.ts",
     "./core": "./src/core/index.ts",
     "./assets/*": "./assets/*"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./core": {
+        "types": "./dist/core.d.ts",
+        "default": "./dist/core.js"
+      },
+      "./assets/*": "./assets/*"
+    },
+    "types": "./dist/index.d.ts",
+    "access": "public"
   },
   "scripts": {
     "test": "vitest run",
@@ -17,14 +53,20 @@
     "conformance": "vitest run conformance",
     "gen:assets": "node scripts/gen-assets.mjs",
     "bench": "node bench/run.mjs",
-    "size": "node scripts/size.mjs"
+    "size": "node scripts/size.mjs",
+    "build": "node scripts/build-dist.mjs",
+    "prepublishOnly": "pnpm test && pnpm size && pnpm build"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
     "esbuild": "^0.25.0",
+    "jsdom": "^30.0.1",
     "lightningcss": "^1.30.2",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.6"
-  }
+  },
+  "homepage": "https://github.com/colight-dev/twilightcss#readme",
+  "bugs": "https://github.com/colight-dev/twilightcss/issues",
+  "packageManager": "pnpm@10.34.5"
 }

@@ -1,4 +1,4 @@
-// @colight/twilight — a minimal synchronous Tailwind v4 runtime engine.
+// twilightcss — a minimal synchronous Tailwind v4 runtime engine.
 export {
   compile,
   compileOne,

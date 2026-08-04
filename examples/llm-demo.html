@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- Style LLM-generated HTML with no build step.
+     Run `pnpm -C packages/twilight build` once, then open this file. -->
+<meta charset="utf-8" />
+<title>twilight — style LLM output with no build step</title>
+<body>
+  <div id="out"></div>
+  <script type="module">
+    import { createEngine } from "../dist/index.js";
+
+    // Pretend this arrived from a model. Nobody built a stylesheet for it.
+    const llmHtml = `
+      <div class="max-w-md mx-auto my-10 p-6 rounded-xl border border-gray-200 shadow-md bg-white">
+        <h2 class="text-xl font-semibold text-gray-900">Quarterly summary</h2>
+        <p class="mt-2 text-sm text-gray-600 leading-relaxed">
+          Revenue grew <span class="font-medium text-green-700">12%</span> while
+          costs held flat. Two regions need attention.
+        </p>
+        <ul class="mt-4 space-y-2">
+          <li class="flex items-center gap-2 text-sm">
+            <span class="size-2 rounded-full bg-green-500"></span> EMEA — on plan
+          </li>
+          <li class="flex items-center gap-2 text-sm">
+            <span class="size-2 rounded-full bg-amber-500"></span> APAC — watch churn
+          </li>
+        </ul>
+        <button class="mt-5 px-3 py-1.5 rounded-md bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">
+          Open report
+        </button>
+      </div>`;
+
+    const engine = createEngine();
+    const out = document.getElementById("out");
+    out.innerHTML = llmHtml; // sanitize real model output first
+    for (const el of out.querySelectorAll("[class]")) {
+      engine.ensure(el.getAttribute("class"));
+    }
+    // Synchronous: by this line every rule already exists in <head>.
+  </script>
+</body>

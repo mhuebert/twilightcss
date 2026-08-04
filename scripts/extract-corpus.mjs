@@ -1,3 +1,8 @@
+// Tier-1 corpus extraction — MONOREPO TOOL: scans the colight sources this
+// package was extracted from (github.com/colight-dev/colight); in this
+// standalone repo the checked-in corpus (conformance/corpus/colight.txt) is
+// the artifact and this script documents its provenance.
+// Original header:
 // Tier-1 corpus extraction: every class token colight actually passes to tw().
 // Scans string/template literals inside tw(...) call parens (handles ternaries,
 // multi-line calls, nested parens). Tokens touching a `${}` boundary without
