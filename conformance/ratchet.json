@@ -1,5 +1,5 @@
 {
   "comment": "Monotonic pass-rate floors. CI fails if a tier's measured rate drops below its floor. Raise floors as the engine improves; never lower them. tier1 must reach 1.0 before the colight migration decision.",
-  "tier1_colight": 0.0,
-  "tier2_generated": 0.0
+  "tier1_colight": 1,
+  "tier2_generated": 0.39
 }
