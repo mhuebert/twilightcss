@@ -59,20 +59,21 @@ twilight/
   tw       — the ergonomic helper: join class names, ensure CSS, return the string. Sync.
 ```
 
-Sketch of the public API (final naming open):
+Published as **`@colight/twilight`** (the `@colight` npm org already carries `@colight/core`
+and friends). Sketch of the public API:
 
 ```ts
-import { createEngine } from "twilight"; // dom adapter
+import { createEngine } from "@colight/twilight"; // dom adapter
 const engine = createEngine({
   /* target?, theme?, prose? */
 });
 engine.ensure("flex px-4 hover:bg-red-500/50"); // synchronous; CSS in document on return
 engine.report; // unmatched tokens (dev tooling hook)
 
-import { compile } from "twilight/core"; // pure core
+import { compile } from "@colight/twilight/core"; // pure core
 compile(["flex", "px-4"]); // → { css, matched, unmatched }  — SSR / static extraction for free
 
-import { tw } from "twilight"; // convenience singleton, twind-style
+import { tw } from "@colight/twilight"; // convenience singleton, twind-style
 tw("flex px-4");
 ```
 
@@ -203,9 +204,9 @@ reporting wired.
 gradients), remaining variants, arbitrary everything. Raise the tier-2 ratchet each PR. Land
 append-only injection only if the bench says it matters.
 
-**M4 — Publish prep.** Name (npm: `twilight` and `tw4` taken; `twilightcss` free as of
-2026-08-03 — or a scoped name), README with the conformance pass-rate and size badge as the
-headline, examples: vanilla `<script>`, React, and an "style LLM output with no build step"
+**M4 — Publish prep.** Publish as `@colight/twilight` (bare `twilight` and `tw4` are taken on
+npm; the scoped name also keeps the colight org visible in the credit). README with the
+conformance pass-rate and size badge as the headline, examples: vanilla `<script>`, React, and an "style LLM output with no build step"
 demo. MIT + NOTICE. Decide repo home (extract vs publish from monorepo) at the end — develop in
 the monorepo for now.
 
@@ -224,7 +225,6 @@ the monorepo for now.
 
 ## Open questions
 
-- **Name** — `twilightcss`? scoped? (verify availability again at publish time)
 - **Theme customization surface** — v1 ships the default theme; custom themes are "bring your
   own `@theme` CSS + breakpoint values at init". How much config beyond that? (Lean: none.)
 - **`prose` scope** — full typography plugin fidelity vs the subset colight renders. Oracle
