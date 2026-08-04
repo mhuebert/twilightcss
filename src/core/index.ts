@@ -10,7 +10,7 @@ import { themeCss, inlineThemeVars } from "../../assets/theme.mjs";
 export type { Theme };
 export { createTheme, parseThemeVars } from "./theme.ts";
 
-const defaultTheme = createTheme(themeCss, inlineThemeVars);
+export const defaultTheme = createTheme(themeCss, inlineThemeVars);
 
 export interface CompileResult {
   /** Concatenated CSS for all matched tokens, in input order. */
