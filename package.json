@@ -1,0 +1,29 @@
+{
+  "name": "@colight/twilight",
+  "version": "0.0.0",
+  "description": "Minimal synchronous Tailwind v4 runtime engine, verified against the real compiler",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./core": "./src/core/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "conformance": "vitest run conformance",
+    "gen:assets": "node scripts/gen-assets.mjs",
+    "bench": "node bench/run.mjs",
+    "size": "node scripts/size.mjs"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
+    "esbuild": "^0.25.0",
+    "lightningcss": "^1.30.2",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.6"
+  }
+}

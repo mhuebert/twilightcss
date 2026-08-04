@@ -192,6 +192,24 @@ cold/warm flush latency. Decision gate: if it lands under ~100 KB gz and flushes
 spike may end there. Expectation: too heavy (full compiler) — and the adapter written here
 **is** the oracle harness, so nothing is wasted either way. Record the numbers in this file.
 
+> **M0 results (2026-08-03, tailwindcss 4.3.3, node 24, `bench/null-hypothesis/`):**
+> browser esm bundle of `compile()` + default theme.css: **298.7 KB minified, 77.1 KB
+> min+gzip**. Latency: `compile()` init ~10 ms (async API), cold `build()` of 500 tokens
+> ~9 ms, steady-state new-token build ~0.36 ms, already-seen tokens ~0 ms (candidate cache).
+> Verdict: _perf_ of the real compiler is a non-issue; it clears the ~100 KB gz gate but at
+> 2× twilight's whole-stack gz budget and ~7× its parse weight, and `compile()` is
+> irreducibly async (one-frame-unstyled at startup). The spike continues on the size + sync
+>
+> - production-intended axes; the harness (M1) is no-regret either way, and the real-compiler
+>   bundle is a viable fallback for colight if M2 stalls.
+>
+> **M0 discovery — resolved-value fallbacks:** for color opacity modifiers the oracle emits a
+> `color-mix(in srgb, <resolved color> …)` fallback (concrete oklch value, not `var()`) plus
+> an `@supports (color: color-mix(in lab, red, red))`-guarded `var()` version. So the engine
+> does need resolved theme values for fallback emission — obtained by parsing `--name: value`
+> pairs out of the `theme.css` asset it already ships, at init, not by embedding a second
+> copy of the palette in JS.
+
 **M1 — Harness first.** Differential runner, CSS normalization, corpus extraction script for
 tier 1, generator for tier 2, ratchet + bench + size-budget CI scripts. All runnable via
 `pnpm -F twilight conformance | bench | size`.
