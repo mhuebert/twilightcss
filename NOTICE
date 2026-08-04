@@ -1,11 +1,13 @@
 @colight/twilight
 
-The static CSS assets in assets/ (the default theme flattened to :root, and
-the preflight reset) are GENERATED from the pinned `tailwindcss` package by
+The static CSS assets in assets/ (the default theme flattened to :root, the
+preflight reset, and the `prose` typography styles) are GENERATED from the
+pinned `tailwindcss` and `@tailwindcss/typography` packages by
 scripts/gen-assets.mjs, and are derived from Tailwind CSS:
 
   Tailwind CSS — MIT License — Copyright (c) Tailwind Labs, Inc.
   https://github.com/tailwindlabs/tailwindcss
+  https://github.com/tailwindlabs/tailwindcss-typography
 
 The engine's own source code is written against Tailwind's documented class
 grammar and the observed output of its compiler (which this package is

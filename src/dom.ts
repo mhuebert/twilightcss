@@ -17,6 +17,11 @@ export interface EngineOptions {
   themeCss?: string;
   /** inject Tailwind's preflight reset (default true) */
   preflight?: boolean;
+  /**
+   * typography CSS (import { proseCss } from "twilightcss/assets/prose.mjs"),
+   * injected once, on the first `prose` token
+   */
+  proseCss?: string;
 }
 
 export interface Engine {
@@ -50,6 +55,9 @@ export function createEngine(options: EngineOptions = {}): Engine {
   };
 
   const utilitiesEl = styleTag("data-twilight");
+  // created up front so its cascade position (below theme, above utilities)
+  // is fixed even though it fills in lazily
+  const proseEl = options.proseCss !== undefined ? styleTag("data-twilight-prose") : null;
   const themeEl = styleTag("data-twilight-theme");
   if (options.preflight !== false) {
     const preflightEl = styleTag("data-twilight-preflight");
@@ -67,6 +75,10 @@ export function createEngine(options: EngineOptions = {}): Engine {
     for (const token of classes.split(/\s+/)) {
       if (!token || tokens.has(token)) continue;
       tokens.add(token);
+      if (token === "prose" && proseEl) {
+        proseEl.textContent = options.proseCss!;
+        continue;
+      }
       const css = compileOne(token, theme);
       if (css === null) {
         if (!NON_UTILITY.test(token)) unmatched.add(token);

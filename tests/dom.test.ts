@@ -62,3 +62,27 @@ describe("tw", () => {
     expect(els.some((el) => el.textContent!.includes(".gap-2"))).toBe(true);
   });
 });
+
+describe("prose (opt-in)", () => {
+  it("injects the typography CSS once, on the first `prose` token", async () => {
+    const { proseCss } = await import("../assets/prose.mjs");
+    const engine = createEngine({ proseCss });
+    expect(document.querySelector("style[data-twilight-prose]")!.textContent)
+      .toBe("");
+    engine.ensure("prose max-w-none");
+    const el = document.querySelector("style[data-twilight-prose]")!;
+    expect(el.textContent).toContain(".prose");
+    expect(el.textContent).toContain("--tw-prose-body");
+    expect([...engine.unmatched]).toEqual([]);
+    // cascade: prose sits above the utilities layer so utilities win
+    const styles = [...document.head.querySelectorAll("style")];
+    const idx = (sel: string) => styles.findIndex((s) => s.hasAttribute(sel));
+    expect(idx("data-twilight-prose")).toBeLessThan(idx("data-twilight"));
+  });
+
+  it("without the option, `prose` counts as unmatched", () => {
+    const engine = createEngine();
+    engine.ensure("prose");
+    expect([...engine.unmatched]).toEqual(["prose"]);
+  });
+});

@@ -3,10 +3,9 @@
 **A minimal, synchronous Tailwind v4 runtime engine.** Call
 `tw("flex px-4 hover:bg-red-500/50")` in the browser, get correct Tailwind v4
 CSS in the document before the call returns. No build step, no config, no
-dependencies. **16 KB gz** engine (24 KB with Tailwind's theme + preflight),
-and — the part that makes it different — **provably correct**: every release
-is differentially tested against the real Tailwind compiler, and currently
-matches it on **20,000 / 20,000** generated utility candidates, byte-for-byte
+dependencies. **16 KB gz** engine (24 KB with Tailwind's theme + preflight).
+
+Every release is differentially tested against the real Tailwind compiler, and currently matches it on **20,000 / 20,000** generated utility candidates
 after normalization, including identical _rejection_ of invalid classes.
 
 ```js
@@ -18,32 +17,32 @@ el.className = tw("flex items-center gap-2 px-4 rounded-md bg-white shadow-md");
 
 ## Why this exists
 
-Runtime Tailwind had two options, both compromised:
+The existing ways to run Tailwind at runtime:
 
 |                            | min       | gz        | semantics                | sync           | status                                    |
 | -------------------------- | --------- | --------- | ------------------------ | -------------- | ----------------------------------------- |
 | twind v1                   | 46 KB     | 17 KB     | v3-era, approximate      | mostly         | unmaintained since ~2022                  |
-| UnoCSS runtime             | 195 KB    | 52 KB     | v3-flavored dialect      | async          | active, but not-Tailwind                  |
+| UnoCSS runtime             | 195 KB    | 52 KB     | v3-flavored dialect      | async          | active, but not Tailwind                  |
 | tailwindcss v4 `compile()` | 299 KB    | 77 KB     | exact (it _is_ Tailwind) | async init     | official; “not for production” in-browser |
-| **twilight**               | **51 KB** | **16 KB** | **v4, oracle-verified**  | **fully sync** | this package                              |
+| **twilightcss**            | **51 KB** | **16 KB** | **v4, compiler-tested**  | **fully sync** | this package                              |
 
-(All bundles measured identically: esbuild, browser ESM, minified, gzip −9.
-The twind/UnoCSS figures include their embedded themes; twilight's theme
-ships as ~8 KB gz of static CSS on top of the 16 KB engine.)
+(All bundles measured the same way: esbuild, browser ESM, minified, gzip −9.
+The twind/UnoCSS figures include their embedded themes; twilightcss ships its
+theme as ~8 KB gz of static CSS on top of the 16 KB engine.)
 
-Tailwind v4 made a small engine newly possible: **the theme moved out of
-JavaScript into CSS custom properties.** Where twind and UnoCSS embed every
-color hex and spacing value as JS data, twilight ships Tailwind's `@theme`
+A small engine became practical with Tailwind v4, which moved the theme out
+of JavaScript into CSS custom properties. Where twind and UnoCSS embed every
+color hex and spacing value as JS data, twilightcss ships Tailwind's `@theme`
 as static CSS and emits only references:
 
 - `bg-red-500` → `background-color: var(--color-red-500)`
-- `p-13` → `padding: calc(var(--spacing) * 13)` — the whole spacing scale is
-  one multiplication, zero table entries
+- `p-13` → `padding: calc(var(--spacing) * 13)` (the spacing scale is a
+  multiplication, not a lookup table)
 - `bg-red-500/50` → `color-mix(in oklab, var(--color-red-500) 50%, transparent)`
-  — no color math in JS
+  (no color math in JS)
 
 What remains in JS is a candidate parser, a variant engine, and a utility
-table — and 72% of _that_ is the compressed Tailwind vocabulary itself.
+table, and most of that is the compressed Tailwind vocabulary itself.
 
 ## Install
 
@@ -87,34 +86,51 @@ function Badge({ children, tone = "gray" }) {
 
 `tw()` joins its string arguments (falsy arguments are dropped, so the
 `cond && "classes"` idiom works), ensures the CSS exists, and returns the
-joined class string — synchronously. There is no `settled()`, no flush, no
-one-frame-unstyled caveat. That is the entire API for most uses.
+joined class string synchronously.
 
-### Styling LLM output — the no-build-step case
+### Styling LLM output
 
 LLMs emit Tailwind classes by default. Twilight makes that HTML styleable
-anywhere — chat UIs, sandboxes, CSP-strict webviews — without a build:
+anywhere (chat UIs, sandboxes, CSP-strict webviews) without a build:
 
 ```js
 import { createEngine } from "twilightcss";
 
 const engine = createEngine();
 function renderLLMHtml(html, container) {
-  container.innerHTML = html; // sanitize first, as ever
+  container.innerHTML = html; // sanitize untrusted HTML first
   for (const el of container.querySelectorAll("[class]")) {
     engine.ensure(el.getAttribute("class"));
   }
 }
 ```
 
-No CDN fetch, no `eval`, style injection via `<style>` text only — it works
+No CDN fetch or `eval`, style injection via `<style>` text only — it works
 under strict Content-Security-Policy (VS Code webviews, Electron, sandboxed
 iframes).
 
-### Custom themes: the config format is CSS
+### Typography
 
-Because utilities resolve against CSS variables, **extending the theme is
-defining utilities.** No plugin API, no JS config object:
+`prose` ships as a separate asset, compiled from the real
+`@tailwindcss/typography`. Pass it to the engine and it is injected once,
+when the first `prose` token appears; if you never use it, you never load it:
+
+```js
+import { createEngine } from "twilightcss";
+import { proseCss } from "twilightcss/assets/prose.mjs";
+
+const engine = createEngine({ proseCss });
+engine.ensure("prose"); // markdown containers get typography styles
+```
+
+Bare `prose` only for now — the `prose-sm` / `prose-invert` modifiers aren't
+included yet.
+
+### Custom themes
+
+Utilities resolve against CSS variables, so extending the theme is how you
+define new utilities. There is no plugin API or JS config object; the config
+format is CSS:
 
 ```js
 import { createEngine } from "twilightcss";
@@ -137,11 +153,10 @@ engine.ensure(
 );
 ```
 
-One variable lights up its whole family: `--color-brand-500` enables
-`bg-/text-/border-/ring-/fill-…-brand-500` with every variant and opacity
-modifier; `--breakpoint-widescreen` enables the `widescreen:` variant. For
-component classes, compose in JavaScript — a constant holding a `tw()` string
-is the component abstraction, and it needs no framework:
+One variable enables its whole family: `--color-brand-500` makes
+`bg-/text-/border-/ring-/fill-…-brand-500` work with every variant and
+opacity modifier, and `--breakpoint-widescreen` adds a `widescreen:` variant.
+For component classes, use ordinary JavaScript constants:
 
 ```js
 const focusRing =
@@ -150,7 +165,7 @@ const focusRing =
 
 ### Server-side / static extraction
 
-The core is pure — no DOM — and runs anywhere:
+The core has no DOM dependency and runs anywhere:
 
 ```js
 import { compile, compileOne } from "twilightcss/core";
@@ -162,44 +177,39 @@ const { css, unmatched } = compile(["flex", "px-4", "hover:bg-red-500/50"]);
 Pair with `assets/theme.mjs` and `assets/preflight.mjs` (raw CSS strings) to
 emit complete documents.
 
-## Correctness, verifiably
+## Correctness
 
-Most utility libraries assert compatibility; twilight measures it. The test
-suite drives the **real Tailwind compiler** (`tailwindcss`, pinned) as an
-oracle and diffs its output against twilight's per candidate class, after
-CSS normalization (lightningcss):
+The test suite drives the real Tailwind compiler (`tailwindcss`, pinned) as
+an oracle and diffs its output against twilight's for each candidate class,
+after CSS normalization with lightningcss:
 
 - **Generated corpus**: candidates enumerated from the compiler's own class
-  list × variants × modifiers × arbitrary values. Current status:
-  **20,000 / 20,000 matching**, enforced as a CI ratchet that can only rise.
-- **Negative corpus**: invalid classes must be _rejected identically_ —
-  twilight never invents CSS Tailwind wouldn't produce.
-- **Version honesty**: the Tailwind version twilight matches is pinned in its
-  devDependencies; bumping it turns upstream changes into visible test
-  failures instead of silent drift. Current oracle: **tailwindcss 4.3.3**.
+  list × variants × modifiers × arbitrary values. Currently
+  20,000 / 20,000 matching, enforced in CI as a ratchet that can only rise.
+- **Negative corpus**: invalid classes must be rejected identically —
+  twilight never invents CSS that Tailwind wouldn't produce.
+- **Versioning**: the Tailwind version twilight matches is pinned in its
+  devDependencies. Bumping it turns upstream changes into visible test
+  failures instead of silent drift. Current oracle: tailwindcss 4.3.3.
 
-This also defines the compatibility contract precisely: if the real compiler
-and twilight ever disagree, that is a bug here, not a matter of opinion.
+If the compiler and twilight ever disagree, that's a bug in twilight.
 
-## What's deliberately out (v0.1)
+## Not included (v0.1)
 
-- **CSS output is per-class, unsorted across buckets** — rules are injected
-  append-only in first-seen order. Same-specificity conflicts between
-  _different_ classes on one element resolve by injection order, not
-  Tailwind's property order. (The colight adapter shows a 3-bucket pattern —
-  base / variants / media — that covers the practical cases.)
-- **`@utility` / `@custom-variant` blocks** aren't parsed yet; arbitrary
+- **Rule ordering.** Rules are injected append-only, in first-seen order.
+  When two classes of equal specificity target the same property on one
+  element, injection order decides, not Tailwind's property order.
+- **`@utility` / `@custom-variant` blocks** aren't parsed yet. Arbitrary
   values (`[mask-image:…]`, `bg-[#123]`) and arbitrary variants
   (`[&>li]:flex`) are the escape hatch.
-- **Typography (`prose`)** isn't bundled; generate it from
-  `@tailwindcss/typography` with the real compiler and inject it as static
-  CSS (colight does exactly this).
-- The compiler's browser-polyfill fallbacks (e.g. `color-mix` in `srgb` for
-  pre-2023 engines) are not emitted; twilight targets baseline-modern
-  browsers, matching the compiler's un-polyfilled output.
+- **Legacy-browser fallbacks.** The compiler's polyfill output (e.g.
+  `color-mix` in `srgb` for pre-2023 engines) is not emitted; twilight
+  targets current browsers and matches the compiler's un-polyfilled output.
 
 ## License
 
-MIT. The static theme and preflight assets are generated from
-[Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) (MIT, © Tailwind
-Labs) — see NOTICE. Not affiliated with or endorsed by Tailwind Labs.
+MIT. The static theme, preflight and typography assets are generated from
+[Tailwind CSS](https://github.com/tailwindlabs/tailwindcss) and
+[@tailwindcss/typography](https://github.com/tailwindlabs/tailwindcss-typography)
+(MIT, © Tailwind Labs); see NOTICE. Not affiliated with or endorsed by
+Tailwind Labs.

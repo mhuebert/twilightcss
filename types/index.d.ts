@@ -18,6 +18,11 @@ export interface EngineOptions {
   themeCss?: string;
   /** inject Tailwind's preflight reset (default true) */
   preflight?: boolean;
+  /**
+   * typography CSS (import { proseCss } from "twilightcss/assets/prose.mjs"),
+   * injected once, on the first `prose` token
+   */
+  proseCss?: string;
 }
 
 export interface Engine {
