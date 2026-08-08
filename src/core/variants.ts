@@ -2,6 +2,7 @@
 // at-rule wrapper. Applied right-to-left; each wrapper goes OUTSIDE the
 // previous (md:hover:flex → @media md { @media hover { .md\:hover\:flex:hover } }).
 import type { Theme } from "./theme.ts";
+import { VARIANT_ORDER } from "./ranks.ts";
 
 export interface Applied {
   /** transform of the base class selector, e.g. s => s + ":hover" */
@@ -242,6 +243,33 @@ export function resolveVariant(v: string, theme: Theme): Applied[] | null {
   }
 
   return null;
+}
+
+// ---------- canonical order ----------
+// Position in VARIANT_ORDER is the variant's rank. Compound families
+// (not-*, group-*, has-*, data-*, …) each occupy one contiguous block in v4's
+// order, so the base name ranks the whole family. Container variants carry
+// their value in the same token with no dash (`@md`), hence the middle pass.
+const VARIANT_RANKS = new Map(
+  VARIANT_ORDER.split(" ").map((name, i) => [name, i] as const),
+);
+/**
+ * Rank of one variant token: family rank doubled, +1 for arbitrary values —
+ * within a compound family v4 sorts named values (data-active) before
+ * arbitrary ones (data-[state=open]). Unknown variants sort after every
+ * known one.
+ */
+export function variantRank(v: string): number {
+  const arb = v.includes("[") ? 1 : 0;
+  const exact = VARIANT_RANKS.get(v);
+  if (exact !== undefined) return exact * 2 + arb;
+  if (v.startsWith("@") && !v.startsWith("@min-") && !v.startsWith("@max-"))
+    return VARIANT_RANKS.get("@")! * 2 + arb;
+  for (let i = v.lastIndexOf("-"); i > 0; i = v.lastIndexOf("-", i - 1)) {
+    const family = VARIANT_RANKS.get(v.slice(0, i));
+    if (family !== undefined) return family * 2 + arb;
+  }
+  return VARIANT_RANKS.size * 2 + arb;
 }
 
 /**

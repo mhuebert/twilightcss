@@ -1,0 +1,19 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>bench: static stylesheet</title>
+<body>
+  <script type="module">
+    import { run } from "./harness.mjs";
+    import { VOCAB } from "./vocab.mjs";
+    // Same stylesheet a build step would emit (engine compiles the full
+    // vocabulary once), but NO observer — isolates the browser's own
+    // style-recalc cost from engine overhead.
+    run({
+      name: "static",
+      ready: async () => {
+        const { createEngine } = await import("../../dist/index.js");
+        createEngine().tw(VOCAB.join(" "));
+      },
+    });
+  </script>
+</body>

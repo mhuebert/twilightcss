@@ -1,8 +1,9 @@
 // twilight core — pure: tokens → CSS. No DOM. This is the module the browser
 // engine, SSR, and the conformance harness all share.
 import { parseCandidate } from "./parse.ts";
-import { lookupUtility, type PropDef } from "./utilities.ts";
-import { resolveVariant } from "./variants.ts";
+import { lookupUtility, type PropDef, type UtilityOutput } from "./utilities.ts";
+import { resolveVariant, variantRank } from "./variants.ts";
+import { PROP_ORDER, RANK_MISSING } from "./ranks.ts";
 import { emit, escapeClassName, type Node, type StyleRule } from "./emit.ts";
 import { createTheme, type Theme } from "./theme.ts";
 import { themeCss, inlineThemeVars } from "../../assets/theme.mjs";
@@ -13,7 +14,7 @@ export { createTheme, parseThemeVars } from "./theme.ts";
 export const defaultTheme = createTheme(themeCss, inlineThemeVars);
 
 export interface CompileResult {
-  /** Concatenated CSS for all matched tokens, in input order. */
+  /** Concatenated CSS for all matched tokens, in canonical order. */
   css: string;
   /** token → its CSS chunk */
   matched: Map<string, string>;
@@ -21,11 +22,83 @@ export interface CompileResult {
   unmatched: string[];
 }
 
-/** CSS for a single candidate, or null if twilight rejects it. */
+export interface CompiledRule {
+  /** the token's CSS */
+  css: string;
+  /**
+   * Position in Tailwind v4's canonical order. Sorting rules by rank (stable,
+   * so equal ranks keep first-seen order) reproduces the order the real
+   * compiler emits, which is what decides between two equal-specificity
+   * utilities that land on the same element.
+   */
+  rank: number;
+}
+
+/**
+ * How many distinct utility ranks fit under one variant step. Ranks are packed
+ * as `variantKey * UTILITY_SPAN + utilityRank`, so this must exceed the largest
+ * utility rank the generated table holds.
+ */
+const UTILITY_SPAN = 1024;
+/** Variant slots per level in the packed variant key: 88 v4 variants × 2
+ * (named/arbitrary sub-rank), plus the unknown sentinel. */
+const VARIANT_SPAN = 256;
+
+/**
+ * The variant component of a rank. v4 sorts a variant stack by its ranks in
+ * descending order, compared lexicographically — so a stack sorts just after
+ * the single variant it tops out at, and an unvariated utility sorts before
+ * every variated one. Three levels is the practical depth; deeper stacks share
+ * the key of their top three, which makes them ties rather than mis-sorts.
+ */
+function variantKey(variants: string[]): number {
+  const ranks = variants.map(variantRank).sort((a, b) => b - a);
+  let key = 0;
+  for (let i = 0; i < 3; i++) key = key * VARIANT_SPAN + ((ranks[i] ?? -1) + 1);
+  return key;
+}
+
+// The utility component of a rank. v4 sorts utilities by the CSS properties
+// they emit; a utility's signature (first two declared properties,
+// `~`-prefixed for child-selector utilities like divide-*, whose properties
+// would otherwise collide with border-*'s) names its group in PROP_ORDER.
+// Groups share a rank where v4 interleaves families; the bare first property
+// is a fallback for partial arbitrary forms. Mirrored in gen-ranks.mjs.
+const PROP_RANKS = new Map<string, number>();
+PROP_ORDER.replaceAll("!", "--tw-")
+  .split(" ")
+  .forEach((group, i) => {
+    for (const sig of group.split("|")) PROP_RANKS.set(sig, i);
+  });
+function collectProps(nodes: Node[], into: string[]): void {
+  for (const n of nodes) {
+    if (into.length === 3) return;
+    if ("prop" in n) into.push(n.prop);
+    else collectProps(n.nodes, into);
+  }
+}
+function utilityRank(utility: UtilityOutput): number {
+  const props: string[] = [];
+  collectProps(utility.nodes, props);
+  const flag = utility.selectorWrap ? "~" : "";
+  // Left to right, first window the table knows: pair first, then the bare
+  // property. Skipping unknown leading properties absorbs decls a modifier
+  // prepends (inset-shadow-2xs/0 opens with --tw-inset-shadow-alpha, which
+  // no canonical class leads with).
+  for (let i = 0; i < props.length; i++) {
+    const rank =
+      PROP_RANKS.get(flag + props.slice(i, i + 2).join(",")) ??
+      PROP_RANKS.get(flag + props[i]!);
+    if (rank !== undefined) return rank;
+  }
+  return RANK_MISSING;
+}
+
+/** CSS and canonical rank for one candidate, or null if twilight rejects it. */
 export function compileOne(
   token: string,
   theme: Theme = defaultTheme,
-): string | null {
+): CompiledRule | null {
   const cand = parseCandidate(token);
   if (cand === null) return null;
 
@@ -155,7 +228,10 @@ export function compileOne(
       css += emitProperty(p);
     }
   }
-  return css;
+  return {
+    css,
+    rank: variantKey(cand.variants) * UTILITY_SPAN + utilityRank(utility),
+  };
 }
 
 const propsTextCache = new WeakMap<PropDef[], string>();
@@ -186,14 +262,18 @@ export function compile(
 ): CompileResult {
   const matched = new Map<string, string>();
   const unmatched: string[] = [];
-  let css = "";
+  const rules: CompiledRule[] = [];
   for (const token of tokens) {
     const one = compileOne(token, theme);
-    if (one == null) unmatched.push(token);
+    if (one === null) unmatched.push(token);
     else {
-      matched.set(token, one);
-      css += one;
+      matched.set(token, one.css);
+      rules.push(one);
     }
   }
+  // canonical order; Array#sort is stable, so equal ranks keep input order
+  rules.sort((a, b) => a.rank - b.rank);
+  let css = "";
+  for (const rule of rules) css += rule.css;
   return { css, matched, unmatched };
 }

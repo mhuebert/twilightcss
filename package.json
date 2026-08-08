@@ -1,6 +1,6 @@
 {
   "name": "twilightcss",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Minimal synchronous Tailwind v4 runtime engine — byte-verified against the real compiler, 16 KB gz, zero dependencies, no build step",
   "license": "MIT",
   "type": "module",
@@ -43,16 +43,19 @@
     "test:watch": "vitest",
     "conformance": "vitest run conformance",
     "gen:assets": "node scripts/gen-assets.mjs",
+    "gen:ranks": "node --experimental-strip-types scripts/gen-ranks.mjs",
     "bench": "node bench/run.mjs",
     "size": "node scripts/size.mjs",
     "build": "node scripts/build-dist.mjs",
-    "prepublishOnly": "pnpm test && pnpm size && pnpm build"
+    "prepublishOnly": "pnpm test && pnpm size && pnpm build",
+    "bench:browser": "node bench/browser/run-bench.mjs"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
     "esbuild": "^0.25.0",
     "jsdom": "^30.0.1",
     "lightningcss": "^1.30.2",
+    "playwright-core": "^1.62.1",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.6"

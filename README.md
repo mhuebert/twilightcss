@@ -3,7 +3,7 @@
 **A minimal, synchronous Tailwind v4 runtime engine.** Call
 `tw("flex px-4 hover:bg-red-500/50")` in the browser, get correct Tailwind v4
 CSS in the document before the call returns. No build step, no config, no
-dependencies. **16 KB gz** engine (24 KB with Tailwind's theme + preflight).
+dependencies. **18 KB gz** engine (26 KB with Tailwind's theme + preflight).
 
 Every release is differentially tested against the real Tailwind compiler, and currently matches it on **20,000 / 20,000** generated utility candidates
 after normalization, including identical _rejection_ of invalid classes.
@@ -24,11 +24,11 @@ The existing ways to run Tailwind at runtime:
 | twind v1                   | 46 KB     | 17 KB     | v3-era, approximate      | mostly         | unmaintained since ~2022                  |
 | UnoCSS runtime             | 195 KB    | 52 KB     | v3-flavored dialect      | async          | active, but not Tailwind                  |
 | tailwindcss v4 `compile()` | 299 KB    | 77 KB     | exact (it _is_ Tailwind) | async init     | official; “not for production” in-browser |
-| **twilightcss**            | **51 KB** | **16 KB** | **v4, compiler-tested**  | **fully sync** | this package                              |
+| **twilightcss**            | **59 KB** | **18 KB** | **v4, compiler-tested**  | **fully sync** | this package                              |
 
 (All bundles measured the same way: esbuild, browser ESM, minified, gzip −9.
 The twind/UnoCSS figures include their embedded themes; twilightcss ships its
-theme as ~8 KB gz of static CSS on top of the 16 KB engine.)
+theme as ~8 KB gz of static CSS on top of the 18 KB engine.)
 
 A small engine became practical with Tailwind v4, which moved the theme out
 of JavaScript into CSS custom properties. Where twind and UnoCSS embed every
@@ -88,39 +88,66 @@ function Badge({ children, tone = "gray" }) {
 `cond && "classes"` idiom works), ensures the CSS exists, and returns the
 joined class string synchronously.
 
-### Styling LLM output
+### Styling markup you didn't write
 
-LLMs emit Tailwind classes by default. Twilight makes that HTML styleable
-anywhere (chat UIs, sandboxes, CSP-strict webviews) without a build:
+LLMs emit Tailwind classes by default. For HTML that arrives at runtime
+(chat UIs, artifacts, CMS content), point the engine at a container and
+everything in it gets styled — including what streams in later:
 
 ```js
-import { createEngine } from "twilightcss";
+import { observe } from "twilightcss";
 
-const engine = createEngine();
-function renderLLMHtml(html, container) {
-  container.innerHTML = html; // sanitize untrusted HTML first
-  for (const el of container.querySelectorAll("[class]")) {
-    engine.ensure(el.getAttribute("class"));
-  }
-}
+const stop = observe(container); // sanitize untrusted HTML first
 ```
+
+`observe` styles the existing tree before it returns, then watches for added
+elements and class changes. Injection is synchronous and mutation callbacks
+run before the browser paints, so new content is never shown unstyled. Call
+the returned function to stop watching. It shares the default engine with
+`tw()`, so the two mix freely.
+
+Measured against Tailwind's own browser build (`@tailwindcss/browser`, which
+also observes the document but rebuilds through the full compiler): on a
+steady stream of mutations that introduce no new classes, twilight's
+observer cost stays proportional to the change (0–1.4 ms/frame even on a
+20,000-element document) where the Play build rescans every classed element
+in the document per mutation batch (~11.5 ms/frame at that size). Both
+engines style content before its first paint. Full methodology and numbers:
+[`bench/browser/`](bench/browser/README.md).
 
 No CDN fetch or `eval`, style injection via `<style>` text only — it works
 under strict Content-Security-Policy (VS Code webviews, Electron, sandboxed
 iframes).
 
+### Configuration
+
+`tw` and `observe` share one default engine, created on first use. To give
+it options, call `configure` once at startup, before the first `tw()` or
+`observe()` (it throws if you're too late — an engine's options are fixed
+at creation):
+
+```js
+import { configure } from "twilightcss";
+
+configure({ ...options });
+```
+
+`createEngine(options)` exists for when you genuinely need a *second*
+engine — another document (an iframe, a webview) or deliberate isolation.
+It returns the same `tw`/`observe` pair bound to its own stylesheet.
+
 ### Typography
 
 `prose` ships as a separate asset, compiled from the real
-`@tailwindcss/typography`. Pass it to the engine and it is injected once,
-when the first `prose` token appears; if you never use it, you never load it:
+`@tailwindcss/typography`. Configure it in and it is injected once, when
+the first `prose` token appears; if you never use it, you never load it:
 
 ```js
-import { createEngine } from "twilightcss";
+import { configure, tw } from "twilightcss";
 import { proseCss } from "twilightcss/assets/prose.mjs";
 
-const engine = createEngine({ proseCss });
-engine.ensure("prose"); // markdown containers get typography styles
+configure({ proseCss });
+tw("prose"); // markdown containers get typography styles
 ```
 
 Bare `prose` only for now — the `prose-sm` / `prose-invert` modifiers aren't
@@ -133,10 +160,10 @@ define new utilities. There is no plugin API or JS config object; the config
 format is CSS:
 
 ```js
-import { createEngine } from "twilightcss";
+import { configure, tw } from "twilightcss";
 import { themeCss } from "twilightcss/assets/theme.mjs";
 
-const engine = createEngine({
+configure({
   themeCss:
     themeCss +
     `
@@ -148,9 +175,7 @@ const engine = createEngine({
     }`,
 });
 
-engine.ensure(
-  "bg-brand-500/50 hover:border-brand-500 font-display text-huge widescreen:flex",
-);
+tw("bg-brand-500/50 hover:border-brand-500 font-display text-huge widescreen:flex");
 ```
 
 One variable enables its whole family: `--color-brand-500` makes
@@ -171,7 +196,8 @@ The core has no DOM dependency and runs anywhere:
 import { compile, compileOne } from "twilightcss/core";
 
 const { css, unmatched } = compile(["flex", "px-4", "hover:bg-red-500/50"]);
-// css: the stylesheet text; unmatched: tokens twilight (and Tailwind) reject
+// css: the stylesheet text, in Tailwind's canonical rule order;
+// unmatched: tokens twilight (and Tailwind) reject
 ```
 
 Pair with `assets/theme.mjs` and `assets/preflight.mjs` (raw CSS strings) to
@@ -188,17 +214,19 @@ after CSS normalization with lightningcss:
   20,000 / 20,000 matching, enforced in CI as a ratchet that can only rise.
 - **Negative corpus**: invalid classes must be rejected identically —
   twilight never invents CSS that Tailwind wouldn't produce.
+- **Rule order**: rules are kept in the compiler's canonical order (checked
+  against its `getClassOrder`), so when two equal-specificity classes target
+  the same property on one element — `p-4 px-2` — the cascade resolves them
+  the way a Tailwind build would. Currently 131,018 / 131,018 ordered pairs
+  agreeing, same ratchet regime.
 - **Versioning**: the Tailwind version twilight matches is pinned in its
   devDependencies. Bumping it turns upstream changes into visible test
   failures instead of silent drift. Current oracle: tailwindcss 4.3.3.
 
 If the compiler and twilight ever disagree, that's a bug in twilight.
 
-## Not included (v0.1)
+## Not included (v0.2)
 
-- **Rule ordering.** Rules are injected append-only, in first-seen order.
-  When two classes of equal specificity target the same property on one
-  element, injection order decides, not Tailwind's property order.
 - **`@utility` / `@custom-variant` blocks** aren't parsed yet. Arbitrary
   values (`[mask-image:…]`, `bg-[#123]`) and arbitrary variants
   (`[&>li]:flex`) are the escape hatch.

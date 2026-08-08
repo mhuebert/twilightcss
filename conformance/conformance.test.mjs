@@ -14,7 +14,7 @@ import { compileOne } from "../src/core/index.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ratchet = JSON.parse(readFileSync(path.join(here, "ratchet.json")));
-const engine = { css: (token) => compileOne(token) };
+const engine = { css: (token) => compileOne(token)?.css ?? null };
 
 function corpusFile(name) {
   return readFileSync(path.join(here, "corpus", name), "utf8")

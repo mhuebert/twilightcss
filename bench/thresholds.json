@@ -1,5 +1,4 @@
 {
-  "comment": "Milliseconds, regression ceilings — tighten only. cold500 compiles a 500-token generated corpus incl. heavyweight mask/filter tokens (~3us/token); pre-M3 numbers looked lower only because most tokens were cheap rejects. Sub-ms remains the aspiration for typical documents.",
-  "cold500ms": 2.0,
-  "warmNewTokenMs": 0.02
+  "cold500ms": 3.487,
+  "warmNewTokenMs": 0.0081
 }

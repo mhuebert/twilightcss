@@ -1,0 +1,22 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>bench: play-cdn</title>
+<body>
+  <script type="module">
+    import { run } from "./harness.mjs";
+    // @tailwindcss/browser auto-starts at script eval: it compiles the full
+    // default theme and begins observing document.documentElement. ready()
+    // injects it so scenarios control when the engine sees the document.
+    run({
+      name: "play-cdn",
+      ready: () =>
+        new Promise((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = "./play-cdn.js";
+          s.onload = () => resolve();
+          s.onerror = reject;
+          document.head.append(s);
+        }),
+    });
+  </script>
+</body>

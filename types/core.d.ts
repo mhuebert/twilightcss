@@ -15,7 +15,7 @@ export interface Theme {
 }
 
 export interface CompileResult {
-  /** Concatenated CSS for all matched tokens, in input order. */
+  /** Concatenated CSS for all matched tokens, in canonical order. */
   css: string;
   /** token → its CSS chunk */
   matched: Map<string, string>;
@@ -23,8 +23,23 @@ export interface CompileResult {
   unmatched: string[];
 }
 
-/** CSS for a single candidate class, or null if twilight rejects it. */
-export declare function compileOne(token: string, theme?: Theme): string | null;
+export interface CompiledRule {
+  /** the token's CSS */
+  css: string;
+  /**
+   * Position in Tailwind v4's canonical order. Sorting rules by rank
+   * (stable, so equal ranks keep first-seen order) reproduces the order the
+   * real compiler emits, which is what decides between two
+   * equal-specificity utilities that land on the same element.
+   */
+  rank: number;
+}
+
+/** CSS and canonical rank for one candidate, or null if twilight rejects it. */
+export declare function compileOne(
+  token: string,
+  theme?: Theme,
+): CompiledRule | null;
 
 export declare function compile(
   tokens: Iterable<string>,

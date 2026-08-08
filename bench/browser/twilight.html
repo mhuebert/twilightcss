@@ -1,0 +1,15 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>bench: twilightcss</title>
+<body>
+  <script type="module">
+    import { run } from "./harness.mjs";
+    run({
+      name: "twilightcss",
+      ready: async () => {
+        const { createEngine } = await import("../../dist/index.js");
+        createEngine().observe(document.body);
+      },
+    });
+  </script>
+</body>

@@ -1,5 +1,9 @@
 {
-  "comment": "Bytes, regression ceilings — tighten only. Set just above the measured values after the M3.5 spec-driven rework (engine 52259 min / 16345 gz). PLAN's aspirational 40KB-min engine is not reachable by refactoring: ~72% of the minified engine is string data (the Tailwind v4 property/keyword vocabulary and the packed statics table), leaving only ~14.5KB of actual code. The gz numbers are the network-relevant ones: full stack ~24KB gz vs ~200KB for the UnoCSS stack it replaces.",
-  "engine": { "min": 53000, "gz": 16600 },
-  "engine+assets": { "min": 80000, "gz": 24400 }
+  "comment": "Bytes, regression ceilings — tighten only. Set just above the measured values after the ordering pass (engine 60707 min / 18784 gz; was 52259/16345 after M3.5 — the delta is the canonical-order tables and sorted insertion). ~72% of the minified engine is string data (the Tailwind v4 property/keyword vocabulary, packed statics, and now PROP_ORDER/VARIANT_ORDER), leaving ~15KB of actual code. The gz numbers are the network-relevant ones: full stack ~26KB gz vs ~200KB for the UnoCSS stack it replaces.",
+  "engine": { "min": 62000,
+    "gz": 19200
+  },
+  "engine+assets": { "min": 90000,
+    "gz": 27300
+  }
 }

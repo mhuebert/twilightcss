@@ -6,7 +6,7 @@
 <body>
   <div id="out"></div>
   <script type="module">
-    import { createEngine } from "../dist/index.js";
+    import { observe } from "../dist/index.js";
 
     // Pretend this arrived from a model. Nobody built a stylesheet for it.
     const llmHtml = `
@@ -29,12 +29,9 @@
         </button>
       </div>`;
 
-    const engine = createEngine();
     const out = document.getElementById("out");
+    observe(out);
     out.innerHTML = llmHtml; // sanitize real model output first
-    for (const el of out.querySelectorAll("[class]")) {
-      engine.ensure(el.getAttribute("class"));
-    }
     // Synchronous: by this line every rule already exists in <head>.
   </script>
 </body>
