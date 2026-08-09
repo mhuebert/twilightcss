@@ -52,3 +52,20 @@ export function createTheme(
     has: (name) => vars.has(name) || inline.has(name),
   };
 }
+
+/**
+ * A theme that reads `overlay` first, then `base` — without touching either
+ * (`base` is often the shared defaultTheme). The overlay map stays live:
+ * vars merged into it later (page `@theme` blocks) are visible to every
+ * subsequent lookup, which is what lets late-arriving theme extensions
+ * validate candidates and breakpoint variants with no recompute.
+ */
+export function overlayTheme(base: Theme, overlay: Map<string, string>): Theme {
+  return {
+    // the raw views stay the base's; lookups go through get/has
+    vars: base.vars,
+    inline: base.inline,
+    get: (name) => overlay.get(name) ?? base.get(name),
+    has: (name) => overlay.has(name) || base.has(name),
+  };
+}

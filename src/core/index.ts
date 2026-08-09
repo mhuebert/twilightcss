@@ -9,7 +9,7 @@ import { createTheme, type Theme } from "./theme.ts";
 import { themeCss, inlineThemeVars } from "../../assets/theme.mjs";
 
 export type { Theme };
-export { createTheme, parseThemeVars } from "./theme.ts";
+export { createTheme, overlayTheme, parseThemeVars } from "./theme.ts";
 
 export const defaultTheme = createTheme(themeCss, inlineThemeVars);
 
@@ -94,11 +94,36 @@ function utilityRank(utility: UtilityOutput): number {
   return RANK_MISSING;
 }
 
+/** A candidate compiled to its rule tree, before serialization. */
+export interface CandidateRules {
+  /** style/at-rule nodes; against base `&` these splice into a parent rule */
+  rules: Node[];
+  /** `@property` registrations the utility needs, as CSS text */
+  propsCss: string;
+  important: boolean;
+  rank: number;
+}
+
 /** CSS and canonical rank for one candidate, or null if twilight rejects it. */
 export function compileOne(
   token: string,
   theme: Theme = defaultTheme,
 ): CompiledRule | null {
+  const c = compileCandidate(token, theme, `.${escapeClassName(token)}`);
+  if (c === null) return null;
+  return { css: emit(c.rules, { important: c.important }) + c.propsCss, rank: c.rank };
+}
+
+/**
+ * compileOne against a caller-chosen base selector, returning the rule tree
+ * instead of text. `@apply` expansion compiles against `&` so variants
+ * become CSS-nesting rules inside the author's own rule.
+ */
+export function compileCandidate(
+  token: string,
+  theme: Theme,
+  base: string,
+): CandidateRules | null {
   const cand = parseCandidate(token);
   if (cand === null) return null;
 
@@ -109,10 +134,10 @@ export function compileOne(
   });
   if (utility === null) return null;
 
-  // class selector, then variant transforms LEFT-TO-RIGHT (v4 appends each
+  // base selector, then variant transforms LEFT-TO-RIGHT (v4 appends each
   // variant's selector part in written order); at-rule wrappers also
   // accumulate left-to-right, leftmost outermost.
-  let selectors = [`.${escapeClassName(token)}`];
+  let selectors = [base];
   const wrappers: string[] = [];
   const extraDecls: Node[] = [];
   const extraProps: PropDef[] = [];
@@ -216,20 +241,22 @@ export function compileOne(
     rules = [{ at: wrappers[i]!, nodes: rules }];
   }
 
-  let css = emit(rules, { important: cand.important });
+  let propsCss = "";
   if (extraProps.length === 0 && utility.properties) {
     // hot path: property groups are shared arrays — cache their serialization
-    css += propsText(utility.properties);
+    propsCss = propsText(utility.properties);
   } else if (extraProps.length || utility.properties) {
     const seenProps = new Set<string>();
     for (const p of [...extraProps, ...(utility.properties ?? [])]) {
       if (seenProps.has(p.name)) continue;
       seenProps.add(p.name);
-      css += emitProperty(p);
+      propsCss += emitProperty(p);
     }
   }
   return {
-    css,
+    rules,
+    propsCss,
+    important: cand.important,
     rank: variantKey(cand.variants) * UTILITY_SPAN + utilityRank(utility),
   };
 }

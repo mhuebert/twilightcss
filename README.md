@@ -4,7 +4,7 @@
 dynamically composed UIs, common in the LLM era.** Call
 `tw("flex px-4 hover:bg-red-500/50")` in the browser, get correct Tailwind v4
 CSS in the document before the call returns. No config, no dependencies.
-**18 KB gz** engine (26 KB with Tailwind's theme + preflight).
+**20 KB gz** engine (27 KB with Tailwind's theme + preflight).
 
 Every release is differentially tested against the real Tailwind compiler, and currently matches it on **20,000 / 20,000** generated utility candidates
 after normalization, including identical _rejection_ of invalid classes.
@@ -46,16 +46,36 @@ underneath:
 
 |                                    | `@tailwindcss/browser`                    | `twilightcss` drop-in                    |
 | ---------------------------------- | ----------------------------------------- | ---------------------------------------- |
-| size (gz)                          | 74 KB                                     | 26 KB                                    |
+| size (gz)                          | 74 KB                                     | 27 KB                                    |
 | CSS injection                      | async, full compiler                      | synchronous                              |
 | mutation cost, 20k-element page    | ~11.5 ms/frame (rescans classed elements) | 0–1.4 ms/frame (proportional to change)  |
 | production stance                  | “not for production”                      | production target                        |
 
 Both style new content before its first paint; the differences are size,
 steady-state cost on a mutating page, and intent. Methodology and full
-numbers: [`bench/browser/`](bench/browser/README.md). Pages that customize
-Tailwind through `<style type="text/tailwindcss">` blocks (`@theme`,
-`@utility`) aren't supported yet — see [Not included](#not-included-v02).
+numbers: [`bench/browser/`](bench/browser/README.md).
+
+Customization uses the same channel as Tailwind's browser builds — a
+`<style type="text/tailwindcss">` tag, anywhere in the page (before or
+after the script; it can even stream in):
+
+```html
+<style type="text/tailwindcss">
+  @theme {
+    --color-brand-500: oklch(0.7 0.15 200);
+    --breakpoint-widescreen: 100rem;
+  }
+  .btn {
+    @apply px-3 py-1.5 rounded-md bg-brand-500 text-white hover:bg-brand-500/80;
+  }
+</style>
+```
+
+`@theme` variables validate their whole utility family (`bg-brand-500`,
+`widescreen:flex`, …), and `@apply` expands exactly as the real compiler
+expands it: utilities in canonical order, variants as CSS-nesting rules.
+`@utility` / `@custom-variant` blocks aren't parsed yet — see
+[Not included](#not-included-v02).
 
 ## As a module
 
@@ -187,7 +207,10 @@ tw("bg-brand-500/50 hover:border-brand-500 font-display text-huge widescreen:fle
 One variable enables its whole family: `--color-brand-500` makes
 `bg-/text-/border-/ring-/fill-…-brand-500` work with every variant and
 opacity modifier, and `--breakpoint-widescreen` adds a `widescreen:` variant.
-For component classes, use ordinary JavaScript constants:
+`<style type="text/tailwindcss">` tags with `@theme` / `@apply` (see the
+script-tag section) work in any mode — the engine processes them in
+whatever document it's attached to. For component classes in JS, ordinary
+constants compose:
 
 ```js
 const focusRing =
@@ -218,11 +241,11 @@ The existing ways to run Tailwind at runtime:
 | twind v1                   | 46 KB     | 17 KB     | v3-era, approximate      | mostly         | unmaintained since ~2022                  |
 | UnoCSS runtime             | 195 KB    | 52 KB     | v3-flavored dialect      | async          | active, but not Tailwind                  |
 | tailwindcss v4 `compile()` | 299 KB    | 77 KB     | exact (it _is_ Tailwind) | async init     | official; “not for production” in-browser |
-| **twilightcss**            | **59 KB** | **18 KB** | **v4, compiler-tested**  | **fully sync** | this package                              |
+| **twilightcss**            | **63 KB** | **20 KB** | **v4, compiler-tested**  | **fully sync** | this package                              |
 
 (All bundles measured the same way: esbuild, browser ESM, minified, gzip −9.
 The twind/UnoCSS figures include their embedded themes; twilightcss ships its
-theme as ~8 KB gz of static CSS on top of the 18 KB engine.)
+theme as ~8 KB gz of static CSS on top of the 20 KB engine.)
 
 A small engine became practical with Tailwind v4, which moved the theme out
 of JavaScript into CSS custom properties. Where twind and UnoCSS embed every
@@ -262,10 +285,10 @@ If the compiler and twilight ever disagree, that's a bug in twilight.
 
 ## Not included (v0.2)
 
-- **`@utility` / `@custom-variant` blocks** aren't parsed yet — including
-  inside `<style type="text/tailwindcss">` tags, which the drop-in build
-  ignores entirely. Arbitrary values (`[mask-image:…]`, `bg-[#123]`) and
-  arbitrary variants (`[&>li]:flex`) are the escape hatch.
+- **`@utility` / `@custom-variant` blocks** aren't parsed yet (`@theme` and
+  `@apply` in `<style type="text/tailwindcss">` tags are). Arbitrary values
+  (`[mask-image:…]`, `bg-[#123]`), arbitrary variants (`[&>li]:flex`) and
+  `@apply` are the escape hatches.
 - **Legacy-browser fallbacks.** The compiler's polyfill output (e.g.
   `color-mix` in `srgb` for pre-2023 engines) is not emitted; twilight
   targets current browsers and matches the compiler's un-polyfilled output.

@@ -5,8 +5,10 @@ import {
   compileOne,
   createTheme,
   defaultTheme,
+  overlayTheme,
   type Theme,
 } from "./core/index.ts";
+import { expandApply, extractTheme } from "./core/usercss.ts";
 import { themeCss as defaultThemeCss } from "../assets/theme.mjs";
 import { preflightCss } from "../assets/preflight.mjs";
 
@@ -50,9 +52,14 @@ const NON_UTILITY = /^(group|peer)(\/[\w-]+)?$/;
 
 export function createEngine(options: EngineOptions = {}): Engine {
   const doc = options.document ?? document;
-  const theme: Theme = options.themeCss
-    ? createTheme(options.themeCss)
-    : defaultTheme;
+  // Page `@theme` blocks merge into this overlay rather than the base theme
+  // (which is often the shared defaultTheme). The overlay is live: vars
+  // merged later are visible to every subsequent compile.
+  const themeOverlay = new Map<string, string>();
+  const theme: Theme = overlayTheme(
+    options.themeCss ? createTheme(options.themeCss) : defaultTheme,
+    themeOverlay,
+  );
 
   const styleTag = (name: string): HTMLStyleElement => {
     const el = doc.createElement("style");
@@ -123,12 +130,77 @@ export function createEngine(options: EngineOptions = {}): Engine {
     }
   };
 
+  // `<style type="text/tailwindcss">` tags — the customization channel for
+  // pages that are never built. Their `@theme` vars merge into the engine's
+  // theme (validating whole utility families and breakpoint variants), and
+  // the tag's CSS — which the browser itself ignores, the type is foreign to
+  // it — is compiled into a sibling <style> at the same cascade position.
+  // Tags are found at engine creation and by observe() as they arrive; each
+  // gets its own observer so content that streams in re-processes it.
+  const USER_STYLE = 'style[type="text/tailwindcss"]';
+  const compiledText = new WeakMap<Element, string>();
+  const compiledEl = new WeakMap<Element, HTMLStyleElement>();
+  // tags whose @apply hit tokens the theme couldn't compile yet — a grown
+  // theme (a later @theme tag) warrants re-expanding them
+  const pendingApply = new Set<Element>();
+
+  // A grown theme can validate tokens that were rejected before it arrived.
+  const retryUnmatched = (): void => {
+    for (const el of [...pendingApply]) {
+      pendingApply.delete(el);
+      compiledText.delete(el);
+      processUserStyle(el);
+    }
+    if (unmatched.size === 0) return;
+    const retry = [...unmatched].join(" ");
+    for (const token of unmatched) tokens.delete(token);
+    unmatched.clear();
+    add(retry);
+  };
+
+  const processUserStyle = (el: Element): void => {
+    const text = el.textContent ?? "";
+    if (compiledText.get(el) === text) return;
+    compiledText.set(el, text);
+    const { vars, css } = extractTheme(text);
+    let grew = false;
+    for (const [name, value] of vars) {
+      if (themeOverlay.get(name) !== value) {
+        themeOverlay.set(name, value);
+        grew = true;
+      }
+    }
+    let out = compiledEl.get(el);
+    if (!out) {
+      out = doc.createElement("style");
+      out.setAttribute("data-twilight-compiled", "");
+      el.after(out);
+      compiledEl.set(el, out);
+      new MutationObserver(() => processUserStyle(el)).observe(el, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+    }
+    const expanded = expandApply(css, theme);
+    out.textContent = expanded.css;
+    if (expanded.unknown.length) pendingApply.add(el);
+    if (grew) retryUnmatched();
+  };
+
+  const scanUserStyles = (root: ParentNode & Node): void => {
+    const el = root as Element;
+    if (el.matches?.(USER_STYLE)) processUserStyle(el);
+    for (const tag of root.querySelectorAll(USER_STYLE)) processUserStyle(tag);
+  };
+
   const addTree = (node: ParentNode & Node): void => {
     const cls =
       node.nodeType === 1 ? (node as Element).getAttribute("class") : null;
     if (cls) add(cls);
     for (const el of node.querySelectorAll("[class]"))
       add(el.getAttribute("class")!);
+    scanUserStyles(node);
   };
 
   const observe = (root?: ParentNode & Node): (() => void) => {
@@ -165,6 +237,10 @@ export function createEngine(options: EngineOptions = {}): Engine {
     if (classes) add(classes);
     return classes;
   };
+
+  // user-authored text/tailwindcss tags already in the document apply from
+  // the start, whether or not observe() is ever called
+  scanUserStyles(doc);
 
   return { tw, observe, tokens, unmatched };
 }

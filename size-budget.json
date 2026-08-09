@@ -1,12 +1,12 @@
 {
-  "comment": "Bytes, regression ceilings — tighten only. Set just above the measured values after the ordering pass (engine 60707 min / 18784 gz; was 52259/16345 after M3.5 — the delta is the canonical-order tables and sorted insertion). ~72% of the minified engine is string data (the Tailwind v4 property/keyword vocabulary, packed statics, and now PROP_ORDER/VARIANT_ORDER), leaving ~15KB of actual code. The gz numbers are the network-relevant ones: full stack ~26KB gz vs ~200KB for the UnoCSS stack it replaces.",
-  "engine": { "min": 62000,
-    "gz": 19200
+  "comment": "Bytes, regression ceilings — tighten only. Set just above the measured values after text/tailwindcss support (engine 64168 min / ~20.2k gz; was 60707/18784 after the ordering pass — the delta is the @theme/@apply scanner and the usercss pipeline). ~70% of the minified engine is string data (the Tailwind v4 property/keyword vocabulary, packed statics, PROP_ORDER/VARIANT_ORDER), leaving ~19KB of actual code. The gz numbers are the network-relevant ones: full stack ~28KB gz vs ~200KB for the UnoCSS stack it replaces.",
+  "engine": { "min": 65000,
+    "gz": 20400
   },
-  "browser": { "min": 88000,
-    "gz": 26700
+  "browser": { "min": 92000,
+    "gz": 28300
   },
-  "engine+assets": { "min": 90000,
-    "gz": 27300
+  "engine+assets": { "min": 92500,
+    "gz": 28500
   }
 }
