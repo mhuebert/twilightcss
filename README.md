@@ -1,9 +1,10 @@
 # twilightcss
 
-**A minimal, synchronous Tailwind v4 runtime engine.** Call
+**A small, fast, production-usable Tailwind v4 runtime — no build step. For
+dynamically composed UIs, common in the LLM era.** Call
 `tw("flex px-4 hover:bg-red-500/50")` in the browser, get correct Tailwind v4
-CSS in the document before the call returns. No build step, no config, no
-dependencies. **18 KB gz** engine (26 KB with Tailwind's theme + preflight).
+CSS in the document before the call returns. No config, no dependencies.
+**18 KB gz** engine (26 KB with Tailwind's theme + preflight).
 
 Every release is differentially tested against the real Tailwind compiler, and currently matches it on **20,000 / 20,000** generated utility candidates
 after normalization, including identical _rejection_ of invalid classes.
@@ -15,7 +16,16 @@ el.className = tw("flex items-center gap-2 px-4 rounded-md bg-white shadow-md");
 // the CSS for those classes exists in <head> before this line runs
 ```
 
-## Why this exists
+You need this when classes appear where a build step can't see them:
+
+- **Markup composed at runtime** — LLM output, chat UIs, artifacts,
+  user-generated and CMS content. LLMs emit Tailwind classes by default.
+- **No build step available** — playgrounds, plain script tags, strict-CSP
+  hosts (VS Code webviews, Electron, sandboxed iframes).
+- **Self-styling components** — libraries and embeddable widgets that can't
+  ask the host page to run a Tailwind build.
+
+## Compared to the alternatives
 
 The existing ways to run Tailwind at runtime:
 
@@ -90,9 +100,9 @@ joined class string synchronously.
 
 ### Styling markup you didn't write
 
-LLMs emit Tailwind classes by default. For HTML that arrives at runtime
-(chat UIs, artifacts, CMS content), point the engine at a container and
-everything in it gets styled — including what streams in later:
+For HTML that arrives at runtime — chat UIs, artifacts, CMS content — point
+the engine at a container and everything in it gets styled, including what
+streams in later:
 
 ```js
 import { observe } from "twilightcss";

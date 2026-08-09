@@ -1,7 +1,7 @@
 {
   "name": "twilightcss",
   "version": "0.2.0",
-  "description": "Minimal synchronous Tailwind v4 runtime engine — byte-verified against the real compiler, 16 KB gz, zero dependencies, no build step",
+  "description": "Small, fast, production-usable Tailwind v4 runtime for dynamically composed UIs — no build step, 18 KB gz, zero dependencies, differentially tested against the real compiler",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
