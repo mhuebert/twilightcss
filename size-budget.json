@@ -3,6 +3,9 @@
   "engine": { "min": 62000,
     "gz": 19200
   },
+  "browser": { "min": 88000,
+    "gz": 26700
+  },
   "engine+assets": { "min": 90000,
     "gz": 27300
   }

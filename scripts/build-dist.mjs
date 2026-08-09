@@ -37,8 +37,20 @@ for (const [entry, outfile] of [
   });
 }
 
+// The drop-in script-tag build: classic script (no module required), minified,
+// assets inlined — a single self-contained file for CDN URLs.
+await build({
+  entryPoints: [path.join(pkg, "src/browser.ts")],
+  outfile: path.join(pkg, "dist/browser.js"),
+  bundle: true,
+  minify: true,
+  format: "iife",
+  platform: "browser",
+  logLevel: "info",
+});
+
 mkdirSync(path.join(pkg, "dist"), { recursive: true });
-for (const f of ["index.d.ts", "core.d.ts"]) {
+for (const f of ["index.d.ts", "core.d.ts", "browser.d.ts"]) {
   copyFileSync(path.join(pkg, "types", f), path.join(pkg, "dist", f));
 }
 console.log("dist/ ready");

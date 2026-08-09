@@ -32,12 +32,18 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "default": "./dist/browser.js"
+    },
     "./core": {
       "types": "./dist/core.d.ts",
       "default": "./dist/core.js"
     },
     "./assets/*": "./assets/*"
   },
+  "jsdelivr": "./dist/browser.js",
+  "unpkg": "./dist/browser.js",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",

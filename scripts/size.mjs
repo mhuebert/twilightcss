@@ -12,12 +12,12 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const pkg = path.resolve(here, "..");
 const budgetPath = path.join(pkg, "size-budget.json");
 
-async function measure(entry, { external = [] } = {}) {
+async function measure(entry, { external = [], format = "esm" } = {}) {
   const result = await build({
     entryPoints: [entry],
     bundle: true,
     minify: true,
-    format: "esm",
+    format,
     platform: "browser",
     write: false,
     external,
@@ -35,6 +35,8 @@ const targets = {
     path.join(pkg, "src/index.ts"),
     { external: ["*theme.mjs", "*preflight.mjs"] },
   ],
+  // the drop-in script-tag build: engine + assets + auto-observe, IIFE
+  browser: [path.join(pkg, "src/browser.ts"), { format: "iife" }],
 };
 const assetsEntry = path.join(pkg, "assets/index.mjs");
 if (existsSync(assetsEntry)) targets["engine+assets"] = [assetsEntry, {}];
