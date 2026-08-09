@@ -4,7 +4,7 @@
 dynamically composed UIs, common in the LLM era.** Call
 `tw("flex px-4 hover:bg-red-500/50")` in the browser, get correct Tailwind v4
 CSS in the document before the call returns. No config, no dependencies.
-**20 KB gz** engine (27 KB with Tailwind's theme + preflight).
+**27 KB gz** all-in — engine, Tailwind's theme, preflight.
 
 Every release is differentially tested against the real Tailwind compiler, and currently matches it on **20,000 / 20,000** generated utility candidates
 after normalization, including identical _rejection_ of invalid classes.
@@ -241,11 +241,12 @@ The existing ways to run Tailwind at runtime:
 | twind v1                   | 46 KB     | 17 KB     | v3-era, approximate      | mostly         | unmaintained since ~2022                  |
 | UnoCSS runtime             | 195 KB    | 52 KB     | v3-flavored dialect      | async          | active, but not Tailwind                  |
 | tailwindcss v4 `compile()` | 299 KB    | 77 KB     | exact (it _is_ Tailwind) | async init     | official; “not for production” in-browser |
-| **twilightcss**            | **63 KB** | **20 KB** | **v4, compiler-tested**  | **fully sync** | this package                              |
+| **twilightcss**            | **89 KB** | **27 KB** | **v4, compiler-tested**  | **fully sync** | this package                              |
 
-(All bundles measured the same way: esbuild, browser ESM, minified, gzip −9.
-The twind/UnoCSS figures include their embedded themes; twilightcss ships its
-theme as ~8 KB gz of static CSS on top of the 20 KB engine.)
+(All bundles measured the same way: esbuild, browser ESM, minified, gzip −9,
+themes included — twilightcss's figure is the whole shippable stack. Its
+theme is static CSS, so a consumer that brings its own theme carries just
+the 63 KB min / 20 KB gz engine.)
 
 A small engine became practical with Tailwind v4, which moved the theme out
 of JavaScript into CSS custom properties. Where twind and UnoCSS embed every
