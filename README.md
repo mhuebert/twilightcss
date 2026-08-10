@@ -2,7 +2,7 @@
 
 **A small, fast Tailwind v4 runtime for dynamic UIs.** Call
 `tw("flex px-4 hover:bg-red-500/50")` in the browser, get correct Tailwind v4
-CSS in the document before the call returns. No built step, config, or dependencies.
+CSS in the document before the call returns. No build step, config, or dependencies.
 **27 KB gz** all-in. 
 
 (if you're familiar with [twind](https://github.com/tw-in-js/twind), this is the modern equivalent.)
@@ -19,7 +19,7 @@ el.className = tw("flex items-center gap-2 px-4 rounded-md bg-white shadow-md");
 When would you want this?
 
 1. You (or an LLM) want to **compose and render HTML at runtime**: chat UIs, playgrounds, dynamic artifacts, user-generated or CMS content.
-2. **No build step is available**: plain script tags, scrict-CSP hosts (VS Code webviews, Electron, sandboxed iframes).
+2. **No build step is available**: plain script tags, script-CSP hosts (VS Code webviews, Electron, sandboxed iframes).
 3. **Self-styling components**: libraries and embeddable widgets that can't ask the host page to run a tailwind build.
 
 ## One script tag
