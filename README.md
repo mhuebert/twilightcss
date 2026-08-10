@@ -1,13 +1,13 @@
 # twilightcss
 
-**A small, fast, production-usable Tailwind v4 runtime — no build step. For
-dynamically composed UIs, common in the LLM era.** Call
+**A small, fast Tailwind v4 runtime for dynamic UIs.** Call
 `tw("flex px-4 hover:bg-red-500/50")` in the browser, get correct Tailwind v4
-CSS in the document before the call returns. No config, no dependencies.
-**27 KB gz** all-in — engine, Tailwind's theme, preflight.
+CSS in the document before the call returns. No built step, config, or dependencies.
+**27 KB gz** all-in. 
 
-Every release is differentially tested against the real Tailwind compiler, and currently matches it on **20,000 / 20,000** generated utility candidates
-after normalization, including identical _rejection_ of invalid classes.
+(if you're familiar with [twind](https://github.com/tw-in-js/twind), this is the modern equivalent.)
+
+Every release is differentially tested against the real Tailwind compiler, and currently matches it on **20,000 / 20,000** generated utility candidates after normalization, including identical _rejection_ of invalid classes.
 
 ```js
 import { tw } from "twilightcss";
@@ -16,14 +16,11 @@ el.className = tw("flex items-center gap-2 px-4 rounded-md bg-white shadow-md");
 // the CSS for those classes exists in <head> before this line runs
 ```
 
-You need this when classes appear where a build step can't see them:
+When would you want this?
 
-- **Markup composed at runtime** — LLM output, chat UIs, artifacts,
-  user-generated and CMS content. LLMs emit Tailwind classes by default.
-- **No build step available** — playgrounds, plain script tags, strict-CSP
-  hosts (VS Code webviews, Electron, sandboxed iframes).
-- **Self-styling components** — libraries and embeddable widgets that can't
-  ask the host page to run a Tailwind build.
+1. You (or an LLM) want to **compose and render HTML at runtime**: chat UIs, playgrounds, dynamic artifacts, user-generated or CMS content.
+2. **No build step is available**: plain script tags, scrict-CSP hosts (VS Code webviews, Electron, sandboxed iframes).
+3. **Self-styling components**: libraries and embeddable widgets that can't ask the host page to run a tailwind build.
 
 ## One script tag
 
@@ -121,7 +118,7 @@ joined class string synchronously.
 
 ### Styling markup you didn't write
 
-For HTML that arrives at runtime — chat UIs, artifacts, CMS content — point
+For HTML that arrives at runtime (chat UIs, artifacts, CMS content) point
 the engine at a container and everything in it gets styled, including what
 streams in later:
 
