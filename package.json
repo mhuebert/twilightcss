@@ -1,6 +1,6 @@
 {
   "name": "twilightcss",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Small, fast, production-usable Tailwind v4 runtime for dynamically composed UIs — no build step, 27 KB gz all-in, zero dependencies, differentially tested against the real compiler",
   "license": "MIT",
   "type": "module",
