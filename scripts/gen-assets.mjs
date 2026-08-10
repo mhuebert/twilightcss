@@ -5,7 +5,11 @@
 //   assets/theme.mjs     — full default theme flattened to :root (via the real
 //                          compiler with `@theme static`) incl. @keyframes,
 //                          plus the deprecated inline-reference values as data
-//   assets/preflight.mjs — v4 preflight verbatim
+//   assets/preflight.mjs — v4 preflight via the real compiler (resolves the
+//                          build-time `--theme(...)` calls to their
+//                          `var(--default-*, fallback)` form; shipped verbatim
+//                          they are invalid CSS and browsers drop the
+//                          declarations — body text fell back to serif)
 //   assets/prose.mjs     — `prose` compiled from @tailwindcss/typography
 //                          (opt-in: pass to createEngine({ proseCss }))
 //   assets/index.mjs     — engine + assets entry (size measurement target;
@@ -42,6 +46,29 @@ const compiled = await compile(staticTheme, {
   },
 });
 const themeCss = compiled.build([]).replace(/^\/\*![^\n]*\n/, "");
+
+// Preflight through the real compiler, with the default theme in context, so
+// `--theme(--default-font-family, <stack>)` resolves exactly as in a real v4
+// build: `var(--default-font-family, <stack>)`, overridable via the theme
+// (theme.mjs ships `--default-font-family: var(--font-sans)`). The emitted
+// :root theme block is stripped — the theme asset already ships every var.
+const preflightCompiled = await compile(`${themeSrc}\n${preflight}`, {
+  base: "/",
+  async loadStylesheet() {
+    throw new Error("gen-assets: no imports");
+  },
+  async loadModule() {
+    throw new Error("gen-assets: no modules");
+  },
+});
+const preflightCss = preflightCompiled
+  .build([])
+  .replace(/^\/\*![^\n]*\n/, "")
+  .replace(/^:root, :host \{[\s\S]*?\n\}\n/, "");
+if (/--theme\(/.test(preflightCss))
+  throw new Error("preflight still contains unresolved --theme() calls");
+if (!/html[\s\S]{0,200}font-family: var\(--default-font-family/.test(preflightCss))
+  throw new Error("preflight html font-family did not resolve to var() form");
 
 // Deprecated inline-reference values (e.g. bare --shadow, --radius): parse
 // them out of the source block so the engine can inline them like v4 does.
@@ -91,8 +118,8 @@ writeFileSync(
 );
 writeFileSync(
   path.join(assets, "preflight.mjs"),
-  banner("v4 preflight, verbatim.") +
-    `export const preflightCss = ${JSON.stringify(preflight)};\n`,
+  banner("v4 preflight, compiled (--theme() resolved).") +
+    `export const preflightCss = ${JSON.stringify(preflightCss)};\n`,
 );
 writeFileSync(
   path.join(assets, "prose.mjs"),
